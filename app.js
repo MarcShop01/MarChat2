@@ -5,51 +5,42 @@ const firebaseConfig = {
   projectId: "marchat-b23f1",
   storageBucket: "marchat-b23f1.appspot.com",
   messagingSenderId: "264746644024",
-  appId: "1:264746644024:web:d575bac7eb65c3d3062ccd",
-  measurementId: "G-Y9Q0XWH80H"
+  appId: "1:264746644024:web:d575bac7eb65c3d3062ccd"
 };
 
 // Initialisation Firebase
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+try {
+  const app = firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth(app);
+  const db = firebase.firestore(app);
+  console.log("Firebase initialisé avec succès");
+} catch (error) {
+  console.error("Erreur d'initialisation Firebase:", error);
+}
 
-// Données des pays
+// Variables globales
+let confirmationResult = null;
+let recaptchaVerifier = null;
 const countries = [
   { name: "République Dominicaine", code: "+1" },
-  { name: "Côte d'Ivoire", code: "+225" },
   { name: "France", code: "+33" },
-  { name: "États-Unis", code: "+1" },
-  { name: "Sénégal", code: "+221" }
+  { name: "Côte d'Ivoire", code: "+225" }
 ];
 
-// Éléments DOM
-const authScreen = document.getElementById('auth-screen');
-const otpScreen = document.getElementById('otp-screen');
-const chatScreen = document.getElementById('chat-screen');
-const countrySearch = document.getElementById('country-search');
-const countryCodeSelect = document.getElementById('country-code');
-const countryCodeInput = document.getElementById('country-code-input');
-const phoneInput = document.getElementById('phone');
-const sendOtpBtn = document.getElementById('send-otp');
-const userPhoneDisplay = document.getElementById('user-phone-display');
-const otpDigits = document.querySelectorAll('.otp-digit');
-const verifyOtpBtn = document.getElementById('verify-otp');
-const resendOtpBtn = document.getElementById('resend-otp');
-const chatContainer = document.getElementById('chat-container');
-const messageInput = document.getElementById('message-input');
-const sendMessageBtn = document.getElementById('send-message');
-const logoutBtn = document.getElementById('logout-btn');
+// Initialisation de l'application
+document.addEventListener('DOMContentLoaded', function() {
+  initApp();
+});
 
-let confirmationResult = null;
-let currentUser = null;
-let recaptchaVerifier = null;
+function initApp() {
+  // Mode test pour le développement
+  if (window.location.hostname === "localhost") {
+    firebase.auth().settings.appVerificationDisabledForTesting = true;
+  }
 
-// Initialisation
-function init() {
+  setupRecaptcha();
   populateCountryList();
   setupEventListeners();
-  setupRecaptcha();
   checkAuthState();
 }
 
@@ -66,8 +57,7 @@ function setupRecaptcha() {
 }
 
 function populateCountryList() {
-  countries.sort((a, b) => a.name.localeCompare(b.name));
-  
+  const countryCodeSelect = document.getElementById('country-code');
   countries.forEach(country => {
     const option = document.createElement('option');
     option.value = country.code;
@@ -77,168 +67,106 @@ function populateCountryList() {
 }
 
 function setupEventListeners() {
-  // Recherche de pays
-  countrySearch.addEventListener('focus', () => {
-    countryCodeSelect.style.display = 'block';
-  });
-  
-  countrySearch.addEventListener('input', filterCountries);
-  
-  // Sélection de pays
-  countryCodeSelect.addEventListener('click', (e) => {
-    if (e.target.tagName === 'OPTION') {
-      countryCodeInput.value = e.target.value;
-      countryCodeSelect.style.display = 'none';
-      countrySearch.value = '';
-    }
-  });
-  
-  // Envoi OTP
-  sendOtpBtn.addEventListener('click', sendOtp);
+  // Bouton Suivant
+  document.getElementById('send-otp').addEventListener('click', sendOtp);
   
   // Gestion OTP
-  otpDigits.forEach(digit => {
+  document.querySelectorAll('.otp-digit').forEach(digit => {
     digit.addEventListener('input', handleOtpInput);
     digit.addEventListener('keydown', handleOtpBackspace);
   });
   
-  verifyOtpBtn.addEventListener('click', verifyOtp);
-  resendOtpBtn.addEventListener('click', resendOtp);
+  document.getElementById('verify-otp').addEventListener('click', verifyOtp);
+  document.getElementById('resend-otp').addEventListener('click', resendOtp);
   
   // Chat
-  sendMessageBtn.addEventListener('click', sendMessage);
-  messageInput.addEventListener('keypress', (e) => {
+  document.getElementById('send-message').addEventListener('click', sendMessage);
+  document.getElementById('message-input').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendMessage();
   });
   
-  logoutBtn.addEventListener('click', () => {
-    auth.signOut();
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    firebase.auth().signOut();
   });
 }
 
 async function sendOtp() {
-  const countryCode = countryCodeInput.value;
-  const phoneNumber = phoneInput.value.trim();
-  const fullNumber = countryCode + phoneNumber;
-
-  console.log("Tentative d'envoi à:", fullNumber); // Debug
-
-  if (!phoneNumber || !/^\d{8,15}$/.test(phoneNumber)) {
-    showError("Numéro invalide. Entre 8 et 15 chiffres sans espaces");
-    return;
-  }
+  const phoneNumber = "+1" + document.getElementById('phone').value.trim();
+  console.log("Tentative d'envoi à:", phoneNumber);
 
   try {
-    toggleLoading(true, sendOtpBtn);
+    toggleLoading(true, document.getElementById('send-otp'));
     
-    // Attendre que reCAPTCHA soit prêt
-    await new Promise((resolve) => {
+    await new Promise(resolve => {
       if (grecaptcha.getResponse()) resolve();
       grecaptcha.ready(resolve);
     });
 
-    confirmationResult = await auth.signInWithPhoneNumber(fullNumber, recaptchaVerifier);
+    confirmationResult = await firebase.auth().signInWithPhoneNumber(phoneNumber, recaptchaVerifier);
     
-    userPhoneDisplay.textContent = fullNumber;
-    authScreen.classList.add('hidden');
-    otpScreen.classList.remove('hidden');
-    otpDigits[0].focus();
-
+    document.getElementById('user-phone-display').textContent = phoneNumber;
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('otp-screen').classList.remove('hidden');
+    document.querySelector('.otp-digit').focus();
+    
   } catch (error) {
     console.error("Erreur Firebase:", error.code, error.message);
     handleAuthError(error);
   } finally {
-    toggleLoading(false, sendOtpBtn);
+    toggleLoading(false, document.getElementById('send-otp'));
   }
 }
 
 function handleAuthError(error) {
-  const errorMap = {
+  const errorMessages = {
     'auth/invalid-phone-number': 'Numéro invalide. Format: +18093978951',
     'auth/missing-phone-number': 'Veuillez entrer un numéro',
-    'auth/quota-exceeded': 'Limite de SMS atteinte. Réessayez plus tard',
-    'auth/captcha-check-failed': 'Vérification reCAPTCHA échouée',
-    'default': 'Erreur technique. Veuillez réessayer'
+    'auth/quota-exceeded': 'Limite de SMS atteinte',
+    'auth/captcha-check-failed': 'Erreur de vérification reCAPTCHA'
   };
-
-  showError(errorMap[error.code] || errorMap.default);
-}
-
-function showError(message) {
-  const errorElement = document.getElementById('error-message');
-  errorElement.textContent = message;
-  setTimeout(() => errorElement.textContent = '', 5000);
-}
-
-function toggleLoading(isLoading, button) {
-  button.disabled = isLoading;
-  const spinner = button.querySelector('i');
-  const text = button.querySelector('span');
   
-  if (isLoading) {
-    spinner.classList.remove('hidden');
-    text.classList.add('hidden');
-  } else {
-    spinner.classList.add('hidden');
-    text.classList.remove('hidden');
-  }
-}
-
-function handleOtpInput(e) {
-  const digit = e.target;
-  const index = parseInt(digit.dataset.index);
-  
-  if (digit.value.length === 1 && index < otpDigits.length - 1) {
-    otpDigits[index + 1].focus();
-  }
-}
-
-function handleOtpBackspace(e) {
-  const digit = e.target;
-  const index = parseInt(digit.dataset.index);
-  
-  if (e.key === 'Backspace' && digit.value === '' && index > 0) {
-    otpDigits[index - 1].focus();
-  }
+  showError(errorMessages[error.code] || "Erreur lors de l'envoi du SMS");
 }
 
 async function verifyOtp() {
-  const otpCode = Array.from(otpDigits).map(d => d.value).join('');
-  
+  const otpCode = Array.from(document.querySelectorAll('.otp-digit'))
+    .map(d => d.value).join('');
+
   if (otpCode.length !== 6) {
-    showError("Code incomplet (6 chiffres requis)");
+    showError("Veuillez entrer un code complet à 6 chiffres");
     return;
   }
-  
+
   try {
-    toggleLoading(true, verifyOtpBtn);
+    toggleLoading(true, document.getElementById('verify-otp'));
     await confirmationResult.confirm(otpCode);
   } catch (error) {
     console.error("Erreur:", error);
     showError("Code incorrect. Veuillez réessayer.");
   } finally {
-    toggleLoading(false, verifyOtpBtn);
+    toggleLoading(false, document.getElementById('verify-otp'));
   }
 }
 
 async function resendOtp(e) {
   e.preventDefault();
   await sendOtp();
-  showError("Nouveau code envoyé");
+  showError("Un nouveau code a été envoyé");
 }
 
 function checkAuthState() {
-  auth.onAuthStateChanged((user) => {
+  firebase.auth().onAuthStateChanged((user) => {
     if (user) {
-      currentUser = user;
-      authScreen.classList.add('hidden');
-      otpScreen.classList.add('hidden');
-      chatScreen.classList.remove('hidden');
+      // Utilisateur connecté
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('otp-screen').classList.add('hidden');
+      document.getElementById('chat-screen').classList.remove('hidden');
       initChat(user);
     } else {
-      authScreen.classList.remove('hidden');
-      otpScreen.classList.add('hidden');
-      chatScreen.classList.add('hidden');
+      // Utilisateur non connecté
+      document.getElementById('auth-screen').classList.remove('hidden');
+      document.getElementById('otp-screen').classList.add('hidden');
+      document.getElementById('chat-screen').classList.add('hidden');
     }
   });
 }
@@ -250,6 +178,7 @@ function initChat(user) {
   db.collection("messages")
     .orderBy("timestamp")
     .onSnapshot((snapshot) => {
+      const chatContainer = document.getElementById('chat-container');
       chatContainer.innerHTML = '';
       snapshot.forEach((doc) => {
         displayMessage(doc.data());
@@ -259,42 +188,78 @@ function initChat(user) {
 }
 
 async function sendMessage() {
+  const messageInput = document.getElementById('message-input');
   const text = messageInput.value.trim();
-  if (!text || !currentUser) return;
   
+  if (!text || !firebase.auth().currentUser) return;
+
   try {
     await db.collection("messages").add({
       text: text,
-      senderId: currentUser.uid,
+      senderId: firebase.auth().currentUser.uid,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
     messageInput.value = '';
   } catch (error) {
     console.error("Erreur:", error);
-    showError("Erreur d'envoi");
+    showError("Erreur lors de l'envoi du message");
+  }
+}
+
+// Fonctions utilitaires
+function toggleLoading(isLoading, button) {
+  button.disabled = isLoading;
+  const spinner = button.querySelector('i');
+  const text = button.querySelector('span');
+  
+  spinner.classList.toggle('hidden', !isLoading);
+  text.classList.toggle('hidden', isLoading);
+}
+
+function showError(message) {
+  const errorElement = document.getElementById('error-message');
+  errorElement.textContent = message;
+  setTimeout(() => errorElement.textContent = '', 5000);
+}
+
+function handleOtpInput(e) {
+  const digit = e.target;
+  const index = parseInt(digit.dataset.index);
+  
+  if (digit.value.length === 1 && index < 5) {
+    document.querySelector(`.otp-digit[data-index="${index + 1}"]`).focus();
+  }
+}
+
+function handleOtpBackspace(e) {
+  if (e.key === 'Backspace') {
+    const digit = e.target;
+    const index = parseInt(digit.dataset.index);
+    
+    if (digit.value === '' && index > 0) {
+      document.querySelector(`.otp-digit[data-index="${index - 1}"]`).focus();
+    }
   }
 }
 
 function displayMessage(message) {
   const messageDiv = document.createElement('div');
-  messageDiv.className = `message ${message.senderId === currentUser.uid ? 'sent' : 'received'}`;
+  const isCurrentUser = message.senderId === firebase.auth().currentUser.uid;
   
+  messageDiv.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
   messageDiv.innerHTML = `
     <div class="message-text">${message.text}</div>
     <div class="message-time">${formatTime(message.timestamp?.toDate())}</div>
   `;
   
-  chatContainer.appendChild(messageDiv);
+  document.getElementById('chat-container').appendChild(messageDiv);
 }
 
 function formatTime(date) {
-  if (!date) return '';
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return date?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || '';
 }
 
 function scrollToBottom() {
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+  const container = document.getElementById('chat-container');
+  container.scrollTop = container.scrollHeight;
 }
-
-// Démarrer l'application
-document.addEventListener('DOMContentLoaded', init);
