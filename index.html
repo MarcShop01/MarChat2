@@ -6,7 +6,6 @@
     <title>MarChat</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Reset */
         * {
             margin: 0;
             padding: 0;
@@ -17,16 +16,16 @@
         body {
             background: #f5f5f5;
             color: #333;
+            height: 100vh;
         }
         
         .hidden {
             display: none !important;
         }
         
-        /* Container */
         .container {
             max-width: 100%;
-            height: 100vh;
+            height: 100%;
             display: flex;
             flex-direction: column;
         }
@@ -43,9 +42,10 @@
         .header h1 {
             font-size: 1.2rem;
             margin-left: 10px;
+            flex: 1;
         }
         
-        .back-button {
+        .header button {
             background: none;
             border: none;
             color: white;
@@ -127,15 +127,15 @@
         .contacts-list {
             flex: 1;
             overflow-y: auto;
-            padding: 10px;
         }
         
         .contact {
             display: flex;
             align-items: center;
-            padding: 10px;
+            padding: 10px 15px;
             border-bottom: 1px solid #eee;
             cursor: pointer;
+            background: white;
         }
         
         .contact:hover {
@@ -227,7 +227,7 @@
         }
         
         /* Error */
-        #error-message {
+        .error {
             color: #e74c3c;
             min-height: 20px;
             font-size: 0.9rem;
@@ -246,6 +246,64 @@
             border-radius: 5px;
             display: none;
             z-index: 1000;
+        }
+        
+        /* Add Contact Modal */
+        #add-contact-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+        }
+        
+        .modal-content h3 {
+            margin-bottom: 15px;
+        }
+        
+        .modal-content input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .modal-buttons button {
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #cancel-add-contact {
+            background: #f0f0f0;
+            border: none;
+        }
+        
+        #confirm-add-contact {
+            background: #FFD700;
+            border: none;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -266,7 +324,7 @@
                     <input type="tel" id="phone" placeholder="8093978951" autofocus>
                 </div>
                 
-                <div id="error-message"></div>
+                <div id="error-message" class="error"></div>
                 
                 <button id="send-otp" class="btn-gold">
                     Suivant
@@ -291,7 +349,7 @@
                     <input type="text" maxlength="1" class="otp-digit" data-index="5">
                 </div>
                 
-                <div id="error-message-otp" style="color: #e74c3c; min-height: 20px; font-size: 0.9rem; text-align: center; margin: 10px 0;"></div>
+                <div id="error-message-otp" class="error"></div>
                 
                 <button id="verify-otp" class="btn-gold">
                     Vérifier
@@ -304,6 +362,9 @@
     <div id="contacts-screen" class="hidden">
         <div class="header">
             <h1>Mes Contacts</h1>
+            <button id="add-contact-btn">
+                <i class="fas fa-user-plus"></i>
+            </button>
         </div>
         <div class="contacts-list" id="contacts-list">
             <!-- Contacts seront ajoutés dynamiquement -->
@@ -313,7 +374,7 @@
     <!-- Écran de chat -->
     <div id="chat-screen" class="hidden">
         <div class="header">
-            <button class="back-button" id="back-to-contacts">
+            <button id="back-to-contacts">
                 <i class="fas fa-arrow-left"></i>
             </button>
             <h1 id="current-contact">Contact</h1>
@@ -325,7 +386,22 @@
         
         <div class="message-input-container">
             <input type="text" id="message-input" placeholder="Écrivez un message...">
-            <button id="send-message"><i class="fas fa-paper-plane"></i></button>
+            <button id="send-message">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal Ajout Contact -->
+    <div id="add-contact-modal" class="hidden">
+        <div class="modal-content">
+            <h3>Ajouter un contact</h3>
+            <input type="text" id="contact-phone" placeholder="Numéro (+18095551234)">
+            <input type="text" id="contact-name" placeholder="Nom (optionnel)">
+            <div class="modal-buttons">
+                <button id="cancel-add-contact">Annuler</button>
+                <button id="confirm-add-contact">Ajouter</button>
+            </div>
         </div>
     </div>
 
@@ -337,116 +413,152 @@
     <script>
         class MarChatApp {
             constructor() {
-                this.contacts = [
-                    { 
-                        id: 1, 
-                        name: "Jean Dupont", 
-                        phone: "+18095551234", 
-                        lastSeen: "En ligne",
-                        avatar: "JD"
-                    },
-                    { 
-                        id: 2, 
-                        name: "Marie Claire", 
-                        phone: "+18095556789", 
-                        lastSeen: "Aujourd'hui 10:30",
-                        avatar: "MC"
-                    },
-                    { 
-                        id: 3, 
-                        name: "Luc Antoine", 
-                        phone: "+18095550987", 
-                        lastSeen: "Hier 15:45",
-                        avatar: "LA"
-                    }
-                ];
-                
-                this.messages = {
-                    1: [
-                        { text: "Salut ! Comment ça va ?", sender: 'them', time: '10:30' },
-                        { text: "Ça va bien, merci !", sender: 'me', time: '10:32' },
-                        { text: "Tu veux qu'on se voit demain ?", sender: 'them', time: '10:33' }
-                    ],
-                    2: [
-                        { text: "Bonjour Marie !", sender: 'me', time: '09:15' },
-                        { text: "Salut ! J'ai reçu ton colis", sender: 'them', time: '09:20' }
-                    ],
-                    3: [
-                        { text: "Luc, tu as vu le match hier ?", sender: 'me', time: '22:45' }
-                    ]
-                };
-                
-                this.currentUser = null;
+                // Configuration
+                this.isTesting = true;
+                this.requireAuth = false;
+
+                // Données
+                this.contacts = JSON.parse(localStorage.getItem('marchat_contacts')) || [];
+                this.messages = JSON.parse(localStorage.getItem('marchat_messages')) || {};
+                this.currentUser = JSON.parse(localStorage.getItem('marchat_user'));
                 this.currentContact = null;
                 this.otpCode = "";
-                
-                this.initAuthSystem();
-                this.initEventListeners();
+
+                this.init();
             }
-            
-            initAuthSystem() {
-                // Écouteurs d'authentification
+
+            init() {
+                this.initAuth();
+                this.initEventListeners();
+                this.checkAuthState();
+            }
+
+            initAuth() {
+                if (this.requireAuth && !this.currentUser) {
+                    document.getElementById('auth-screen').classList.remove('hidden');
+                } else {
+                    this.showContactsScreen();
+                }
+            }
+
+            initEventListeners() {
+                // Authentification
                 document.getElementById('send-otp').addEventListener('click', () => this.sendOtp());
                 document.getElementById('verify-otp').addEventListener('click', () => this.verifyOtp());
                 
-                // Gestion des inputs OTP
+                // Contacts
+                document.getElementById('add-contact-btn').addEventListener('click', () => this.showAddContactModal());
+                document.getElementById('cancel-add-contact').addEventListener('click', () => this.hideAddContactModal());
+                document.getElementById('confirm-add-contact').addEventListener('click', () => this.addNewContact());
+                
+                // Chat
+                document.getElementById('back-to-contacts').addEventListener('click', () => this.showContactsScreen());
+                document.getElementById('send-message').addEventListener('click', () => this.sendMessage());
+                document.getElementById('message-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendMessage();
+                });
+
+                // Gestion OTP
                 document.querySelectorAll('.otp-digit').forEach(digit => {
                     digit.addEventListener('input', (e) => this.handleOtpInput(e));
                     digit.addEventListener('keydown', (e) => this.handleOtpBackspace(e));
                 });
             }
-            
-            initEventListeners() {
-                // Navigation
-                document.getElementById('back-to-contacts').addEventListener('click', () => this.showContactsScreen());
-                
-                // Chat
-                document.getElementById('send-message').addEventListener('click', () => this.sendMessage());
-                document.getElementById('message-input').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.sendMessage();
-                });
-            }
-            
-            // Authentification
-            sendOtp() {
+
+            // ================= AUTHENTIFICATION =================
+            async sendOtp() {
                 const phone = this.getPhoneNumber();
                 
                 if (!this.validatePhone(phone)) {
                     this.showError("Format invalide. Ex: +18093978951", 'auth');
                     return;
                 }
-                
-                // Génération du code OTP
-                this.otpCode = this.generateOtp();
-                this.currentUser = { phone };
-                
-                // Simulation d'envoi SMS
-                console.log(`[SYSTEM] Code OTP pour ${phone}: ${this.otpCode}`);
-                alert(`CODE DE DÉMO : ${this.otpCode}\n\n(En production, ce code serait envoyé par SMS)`);
-                
-                this.showOtpScreen(phone);
+
+                if (this.isTesting) {
+                    this.otpCode = this.generateOtp();
+                    alert(`CODE DE TEST : ${this.otpCode}`);
+                    this.showOtpScreen(phone);
+                } else {
+                    // Implémentez l'appel API réel ici
+                    console.log("Envoi SMS à", phone);
+                }
             }
-            
+
             verifyOtp() {
                 const enteredOtp = this.getEnteredOtp();
                 
                 if (enteredOtp === this.otpCode) {
-                    this.showAuthSuccess();
+                    this.currentUser = {
+                        phone: this.getPhoneNumber(),
+                        verified: true,
+                        lastLogin: new Date().toISOString()
+                    };
+                    localStorage.setItem('marchat_user', JSON.stringify(this.currentUser));
+                    this.addDefaultContacts();
                     this.showContactsScreen();
+                    this.showAuthSuccess();
                 } else {
-                    this.showError("Code incorrect. Veuillez réessayer.", 'otp');
+                    this.showError("Code incorrect", 'otp');
                 }
             }
-            
-            // Contacts et Chat
-            showContactsScreen() {
-                document.getElementById('otp-screen').classList.add('hidden');
-                document.getElementById('chat-screen').classList.add('hidden');
-                document.getElementById('contacts-screen').classList.remove('hidden');
-                
+
+            // ================= GESTION CONTACTS =================
+            addDefaultContacts() {
+                // Ajoute des contacts par défaut si premier login
+                if (this.contacts.length === 0) {
+                    this.addContact("+18095551234", "Jean Dupont");
+                    this.addContact("+18095556789", "Marie Claire");
+                    this.addContact(this.currentUser.phone, "Moi");
+                }
+            }
+
+            showAddContactModal() {
+                document.getElementById('add-contact-modal').classList.remove('hidden');
+                document.getElementById('contact-phone').focus();
+            }
+
+            hideAddContactModal() {
+                document.getElementById('add-contact-modal').classList.add('hidden');
+                document.getElementById('contact-phone').value = '';
+                document.getElementById('contact-name').value = '';
+            }
+
+            addNewContact() {
+                const phone = document.getElementById('contact-phone').value.trim();
+                const name = document.getElementById('contact-name').value.trim();
+
+                if (!this.validatePhone(phone)) {
+                    alert("Numéro invalide. Format: +18095551234");
+                    return;
+                }
+
+                if (this.contacts.some(c => c.phone === phone)) {
+                    alert("Ce contact existe déjà");
+                    return;
+                }
+
+                this.addContact(phone, name);
+                this.hideAddContactModal();
                 this.loadContacts();
             }
-            
+
+            addContact(phone, name = "") {
+                const newContact = {
+                    id: Date.now(),
+                    name: name || `Contact ${phone}`,
+                    phone,
+                    lastSeen: "En ligne",
+                    avatar: name ? name.charAt(0) : phone.slice(-2)
+                };
+                
+                this.contacts.push(newContact);
+                this.messages[newContact.id] = this.messages[newContact.id] || [];
+                
+                this.saveData();
+                
+                return newContact;
+            }
+
             loadContacts() {
                 const contactsList = document.getElementById('contacts-list');
                 contactsList.innerHTML = '';
@@ -465,7 +577,8 @@
                     contactsList.appendChild(contactEl);
                 });
             }
-            
+
+            // ================= CHAT =================
             openChat(contact) {
                 this.currentContact = contact;
                 document.getElementById('contacts-screen').classList.add('hidden');
@@ -475,16 +588,12 @@
                 this.loadMessages(contact.id);
                 document.getElementById('message-input').focus();
             }
-            
+
             loadMessages(contactId) {
-                if (!this.messages[contactId]) {
-                    this.messages[contactId] = [];
-                }
-                
                 const container = document.getElementById('messages-container');
                 container.innerHTML = '';
                 
-                this.messages[contactId].forEach(msg => {
+                (this.messages[contactId] || []).forEach(msg => {
                     const msgEl = document.createElement('div');
                     msgEl.className = `message ${msg.sender}`;
                     msgEl.innerHTML = `
@@ -496,13 +605,12 @@
                 
                 container.scrollTop = container.scrollHeight;
             }
-            
+
             sendMessage() {
                 const input = document.getElementById('message-input');
                 const text = input.value.trim();
                 
                 if (text && this.currentContact) {
-                    // Ajouter le message envoyé
                     const newMessage = {
                         text,
                         sender: 'me',
@@ -510,58 +618,98 @@
                     };
                     
                     this.messages[this.currentContact.id].push(newMessage);
+                    this.saveData();
                     this.loadMessages(this.currentContact.id);
                     input.value = '';
-                    
-                    // Simuler une réponse après 1 seconde
+
+                    // Simuler réponse
                     setTimeout(() => {
-                        const responses = [
-                            "D'accord !",
-                            "Je vois, intéressant",
-                            "Merci pour l'info",
-                            "On en parle plus tard ?",
-                            "👍"
-                        ];
-                        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-                        
                         this.messages[this.currentContact.id].push({
-                            text: randomResponse,
+                            text: this.generateResponse(),
                             sender: 'them',
                             time: this.getCurrentTime()
                         });
+                        this.saveData();
                         this.loadMessages(this.currentContact.id);
                     }, 1000);
                 }
             }
-            
-            // Helpers
+
+            // ================= HELPERS =================
+            generateResponse() {
+                const responses = [
+                    "D'accord !",
+                    "Je te rappelle plus tard",
+                    "👍",
+                    "Intéressant...",
+                    "Je suis occupé pour le moment"
+                ];
+                return responses[Math.floor(Math.random() * responses.length)];
+            }
+
+            saveData() {
+                localStorage.setItem('marchat_contacts', JSON.stringify(this.contacts));
+                localStorage.setItem('marchat_messages', JSON.stringify(this.messages));
+            }
+
+            checkAuthState() {
+                if (this.currentUser) {
+                    this.addDefaultContacts();
+                    this.showContactsScreen();
+                }
+            }
+
             getPhoneNumber() {
                 return document.getElementById('country-code').value + 
                        document.getElementById('phone').value.trim();
             }
-            
+
             validatePhone(phone) {
                 return phone.match(/\+1\d{10}/);
             }
-            
+
             generateOtp() {
                 return Math.floor(100000 + Math.random() * 900000).toString();
             }
-            
+
             getEnteredOtp() {
                 return Array.from(document.querySelectorAll('.otp-digit'))
                            .map(input => input.value)
                            .join('');
             }
-            
-            clearOtpInputs() {
-                document.querySelectorAll('.otp-digit').forEach(input => input.value = '');
-            }
-            
+
             getCurrentTime() {
                 return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }
-            
+
+            // ================= UI FUNCTIONS =================
+            showOtpScreen(phone) {
+                document.getElementById('user-phone-display').textContent = phone;
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('otp-screen').classList.remove('hidden');
+                document.querySelector('.otp-digit').focus();
+            }
+
+            showContactsScreen() {
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('otp-screen').classList.add('hidden');
+                document.getElementById('chat-screen').classList.add('hidden');
+                document.getElementById('contacts-screen').classList.remove('hidden');
+                this.loadContacts();
+            }
+
+            showAuthSuccess() {
+                const statusEl = document.getElementById('auth-status');
+                statusEl.style.display = 'block';
+                setTimeout(() => statusEl.style.display = 'none', 3000);
+            }
+
+            showError(message, screen = 'auth') {
+                const errorElement = document.getElementById(`error-message${screen === 'otp' ? '-otp' : ''}`);
+                errorElement.textContent = message;
+                setTimeout(() => errorElement.textContent = '', 5000);
+            }
+
             handleOtpInput(e) {
                 if (e.target.value.length === 1) {
                     const nextIndex = parseInt(e.target.dataset.index) + 1;
@@ -569,33 +717,13 @@
                     if (nextInput) nextInput.focus();
                 }
             }
-            
+
             handleOtpBackspace(e) {
                 if (e.key === 'Backspace' && e.target.value === '') {
                     const prevIndex = parseInt(e.target.dataset.index) - 1;
                     const prevInput = document.querySelector(`.otp-digit[data-index="${prevIndex}"]`);
                     if (prevInput) prevInput.focus();
                 }
-            }
-            
-            // UI Functions
-            showOtpScreen(phone) {
-                document.getElementById('user-phone-display').textContent = phone;
-                document.getElementById('auth-screen').classList.add('hidden');
-                document.getElementById('otp-screen').classList.remove('hidden');
-                document.querySelector('.otp-digit').focus();
-            }
-            
-            showAuthSuccess() {
-                const statusEl = document.getElementById('auth-status');
-                statusEl.style.display = 'block';
-                setTimeout(() => statusEl.style.display = 'none', 3000);
-            }
-            
-            showError(message, screen = 'auth') {
-                const errorElement = document.getElementById(`error-message${screen === 'otp' ? '-otp' : ''}`);
-                errorElement.textContent = message;
-                setTimeout(() => errorElement.textContent = '', 5000);
             }
         }
 
