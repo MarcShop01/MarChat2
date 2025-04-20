@@ -1,21 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js";
-import { 
-  getAuth,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/9.6.0/firebase-auth.js";
-import { 
-  getFirestore,
-  collection,
-  addDoc,
-  serverTimestamp,
-  query,
-  orderBy,
-  onSnapshot
-} from "https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js";
-
 // Configuration Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBLUZl0j_gO7aZtT2zwgTISWO5ab9AFfE0",
@@ -28,17 +10,17 @@ const firebaseConfig = {
 };
 
 // Initialisation Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 // Données des pays
 const countries = [
+  { name: "République Dominicaine", code: "+1" },
   { name: "Côte d'Ivoire", code: "+225" },
   { name: "France", code: "+33" },
   { name: "États-Unis", code: "+1" },
-  { name: "Sénégal", code: "+221" },
-  { name: "Cameroun", code: "+237" }
+  { name: "Sénégal", code: "+221" }
 ];
 
 // Éléments DOM
@@ -72,7 +54,7 @@ function init() {
 }
 
 function setupRecaptcha() {
-  recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+  recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
     size: 'invisible',
     callback: (response) => {
       console.log("reCAPTCHA résolu", response);
@@ -130,19 +112,8 @@ function setupEventListeners() {
   });
   
   logoutBtn.addEventListener('click', () => {
-    signOut(auth);
+    auth.signOut();
   });
-}
-
-function filterCountries() {
-  const searchTerm = countrySearch.value.toLowerCase();
-  const options = countryCodeSelect.options;
-  
-  for (let i = 0; i < options.length; i++) {
-    const option = options[i];
-    const text = option.text.toLowerCase();
-    option.style.display = text.includes(searchTerm) ? 'block' : 'none';
-  }
 }
 
 async function sendOtp() {
@@ -150,41 +121,43 @@ async function sendOtp() {
   const phoneNumber = phoneInput.value.trim();
   const fullNumber = countryCode + phoneNumber;
 
-  // Validation
+  console.log("Tentative d'envoi à:", fullNumber); // Debug
+
   if (!phoneNumber || !/^\d{8,15}$/.test(phoneNumber)) {
     showError("Numéro invalide. Entre 8 et 15 chiffres sans espaces");
     return;
   }
 
   try {
-    // UI Loading
     toggleLoading(true, sendOtpBtn);
     
-    // Envoi du SMS
-    confirmationResult = await signInWithPhoneNumber(auth, fullNumber, recaptchaVerifier);
+    // Attendre que reCAPTCHA soit prêt
+    await new Promise((resolve) => {
+      if (grecaptcha.getResponse()) resolve();
+      grecaptcha.ready(resolve);
+    });
+
+    confirmationResult = await auth.signInWithPhoneNumber(fullNumber, recaptchaVerifier);
     
-    // Succès
     userPhoneDisplay.textContent = fullNumber;
     authScreen.classList.add('hidden');
     otpScreen.classList.remove('hidden');
     otpDigits[0].focus();
 
   } catch (error) {
-    console.error("Erreur:", error);
+    console.error("Erreur Firebase:", error.code, error.message);
     handleAuthError(error);
   } finally {
-    // Reset UI
     toggleLoading(false, sendOtpBtn);
   }
 }
 
 function handleAuthError(error) {
   const errorMap = {
-    'auth/invalid-phone-number': 'Numéro de téléphone invalide. Format: +2250102030405',
+    'auth/invalid-phone-number': 'Numéro invalide. Format: +18093978951',
     'auth/missing-phone-number': 'Veuillez entrer un numéro',
     'auth/quota-exceeded': 'Limite de SMS atteinte. Réessayez plus tard',
-    'auth/too-many-requests': 'Trop de tentatives. Patientez avant de réessayer',
-    'auth/captcha-check-failed': 'Vérification reCAPTCHA échouée. Rafraîchissez la page',
+    'auth/captcha-check-failed': 'Vérification reCAPTCHA échouée',
     'default': 'Erreur technique. Veuillez réessayer'
   };
 
@@ -233,21 +206,17 @@ async function verifyOtp() {
   const otpCode = Array.from(otpDigits).map(d => d.value).join('');
   
   if (otpCode.length !== 6) {
-    showError("Veuillez entrer un code complet à 6 chiffres");
+    showError("Code incomplet (6 chiffres requis)");
     return;
   }
   
   try {
-    // UI Loading
     toggleLoading(true, verifyOtpBtn);
-    
     await confirmationResult.confirm(otpCode);
-    
   } catch (error) {
     console.error("Erreur:", error);
     showError("Code incorrect. Veuillez réessayer.");
   } finally {
-    // Reset UI
     toggleLoading(false, verifyOtpBtn);
   }
 }
@@ -255,11 +224,11 @@ async function verifyOtp() {
 async function resendOtp(e) {
   e.preventDefault();
   await sendOtp();
-  showError("Un nouveau code a été envoyé");
+  showError("Nouveau code envoyé");
 }
 
 function checkAuthState() {
-  onAuthStateChanged(auth, (user) => {
+  auth.onAuthStateChanged((user) => {
     if (user) {
       currentUser = user;
       authScreen.classList.add('hidden');
@@ -275,42 +244,34 @@ function checkAuthState() {
 }
 
 function initChat(user) {
-  // Afficher le numéro dans l'avatar
   const phoneLastDigits = user.phoneNumber.slice(-2);
   document.getElementById('user-avatar').textContent = phoneLastDigits;
   
-  // Écouter les messages
-  const messagesQuery = query(
-    collection(db, "messages"),
-    orderBy("timestamp")
-  );
-  
-  onSnapshot(messagesQuery, (snapshot) => {
-    chatContainer.innerHTML = '';
-    snapshot.forEach((doc) => {
-      displayMessage(doc.data());
+  db.collection("messages")
+    .orderBy("timestamp")
+    .onSnapshot((snapshot) => {
+      chatContainer.innerHTML = '';
+      snapshot.forEach((doc) => {
+        displayMessage(doc.data());
+      });
+      scrollToBottom();
     });
-    scrollToBottom();
-  });
 }
 
 async function sendMessage() {
   const text = messageInput.value.trim();
-  
   if (!text || !currentUser) return;
   
-  const message = {
-    text: text,
-    senderId: currentUser.uid,
-    timestamp: serverTimestamp()
-  };
-  
   try {
-    await addDoc(collection(db, "messages"), message);
+    await db.collection("messages").add({
+      text: text,
+      senderId: currentUser.uid,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
     messageInput.value = '';
   } catch (error) {
     console.error("Erreur:", error);
-    showError("Erreur lors de l'envoi du message");
+    showError("Erreur d'envoi");
   }
 }
 
@@ -324,7 +285,6 @@ function displayMessage(message) {
   `;
   
   chatContainer.appendChild(messageDiv);
-  scrollToBottom();
 }
 
 function formatTime(date) {
