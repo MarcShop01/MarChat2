@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MarChat</title>
+    <title>MarChat - Authentification</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <!-- Chargement des scripts Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
+    <script src="https://www.google.com/recaptcha/api.js"></script>
 </head>
 <body>
     <!-- Écran d'authentification -->
@@ -26,7 +30,7 @@
                     <select id="country-code" size="5"></select>
                 </div>
                 <div class="phone-input">
-                    <input type="text" id="country-code-input" value="+1">
+                    <input type="text" id="country-code-input" value="+1" readonly>
                     <input type="tel" id="phone" placeholder="8093978951" value="8093978951" autofocus>
                 </div>
             </div>
