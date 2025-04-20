@@ -6,46 +6,95 @@
     <title>MarChat</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
+        /* Reset */
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        
+        body {
             background: #f5f5f5;
             color: #333;
         }
-        .hidden { display: none !important; }
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 20px;
+        
+        .hidden {
+            display: none !important;
         }
-        .auth-container, .otp-container, .chat-container {
+        
+        /* Container */
+        .container {
+            max-width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Header */
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 1.2rem;
+            margin-left: 10px;
+        }
+        
+        .back-button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        
+        /* Auth Screens */
+        .auth-container, .otp-container {
             background: white;
+            margin: 20px;
+            padding: 20px;
             border-radius: 10px;
-            padding: 30px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
+        
         .logo {
             text-align: center;
             margin-bottom: 20px;
-            color: #2c3e50;
         }
+        
         .logo i {
-            font-size: 2rem;
+            font-size: 2.5rem;
             color: #FFD700;
         }
+        
+        /* Phone Input */
         .phone-input {
             display: flex;
-            gap: 10px;
             margin: 20px 0;
         }
+        
         #country-code {
             width: 60px;
             text-align: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px 0 0 5px;
         }
+        
         #phone {
             flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-left: none;
+            border-radius: 0 5px 5px 0;
         }
+        
+        /* Buttons */
         .btn-gold {
             background: #FFD700;
             border: none;
@@ -54,13 +103,17 @@
             font-weight: bold;
             width: 100%;
             cursor: pointer;
+            margin-top: 10px;
         }
+        
+        /* OTP Inputs */
         .otp-inputs {
             display: flex;
             gap: 10px;
             justify-content: center;
             margin: 20px 0;
         }
+        
         .otp-digit {
             width: 40px;
             height: 50px;
@@ -69,6 +122,120 @@
             border: 1px solid #ddd;
             border-radius: 5px;
         }
+        
+        /* Contacts */
+        .contacts-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .contact {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        
+        .contact:hover {
+            background: #f9f9f9;
+        }
+        
+        .contact-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #FFD700;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .contact-info h4 {
+            font-size: 1rem;
+        }
+        
+        .contact-info p {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+        }
+        
+        /* Chat */
+        .messages-container {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: #e5ddd5;
+            background-image: url('https://web.whatsapp.com/img/bg-chat-tile-light_a4be512e7195b6b733d9110b408f075d.png');
+        }
+        
+        .message {
+            max-width: 70%;
+            padding: 8px 12px;
+            border-radius: 7.5px;
+            margin-bottom: 10px;
+            position: relative;
+            word-wrap: break-word;
+        }
+        
+        .message.me {
+            background: #DCF8C6;
+            margin-left: auto;
+            border-bottom-right-radius: 0;
+        }
+        
+        .message.them {
+            background: white;
+            margin-right: auto;
+            border-bottom-left-radius: 0;
+        }
+        
+        .message-time {
+            font-size: 0.7rem;
+            color: #7f8c8d;
+            text-align: right;
+            margin-top: 5px;
+        }
+        
+        /* Message Input */
+        .message-input-container {
+            display: flex;
+            padding: 10px;
+            background: #f0f0f0;
+        }
+        
+        #message-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 20px;
+            margin-right: 10px;
+        }
+        
+        #send-message {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #FFD700;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+        
+        /* Error */
+        #error-message {
+            color: #e74c3c;
+            min-height: 20px;
+            font-size: 0.9rem;
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        /* Auth Status */
         #auth-status {
             position: fixed;
             bottom: 20px;
@@ -78,6 +245,7 @@
             padding: 10px 15px;
             border-radius: 5px;
             display: none;
+            z-index: 1000;
         }
     </style>
 </head>
@@ -91,12 +259,14 @@
                     <h1>MarChat</h1>
                 </div>
                 
+                <p style="text-align: center; margin-bottom: 20px;">Entrez votre numéro pour commencer</p>
+                
                 <div class="phone-input">
                     <input type="text" id="country-code" value="+1" readonly>
                     <input type="tel" id="phone" placeholder="8093978951" autofocus>
                 </div>
                 
-                <div id="error-message" style="color: red; min-height: 20px;"></div>
+                <div id="error-message"></div>
                 
                 <button id="send-otp" class="btn-gold">
                     Suivant
@@ -109,8 +279,8 @@
     <div id="otp-screen" class="hidden">
         <div class="container">
             <div class="otp-container">
-                <h2>Vérification du numéro</h2>
-                <p>Entrez le code à 6 chiffres envoyé au <br><span id="user-phone-display"></span></p>
+                <h2 style="text-align: center;">Vérification du numéro</h2>
+                <p style="text-align: center; margin: 10px 0;">Entrez le code à 6 chiffres envoyé au <br><span id="user-phone-display"></span></p>
                 
                 <div class="otp-inputs">
                     <input type="text" maxlength="1" class="otp-digit" data-index="0" autofocus>
@@ -121,6 +291,8 @@
                     <input type="text" maxlength="1" class="otp-digit" data-index="5">
                 </div>
                 
+                <div id="error-message-otp" style="color: #e74c3c; min-height: 20px; font-size: 0.9rem; text-align: center; margin: 10px 0;"></div>
+                
                 <button id="verify-otp" class="btn-gold">
                     Vérifier
                 </button>
@@ -128,16 +300,32 @@
         </div>
     </div>
 
+    <!-- Écran des contacts -->
+    <div id="contacts-screen" class="hidden">
+        <div class="header">
+            <h1>Mes Contacts</h1>
+        </div>
+        <div class="contacts-list" id="contacts-list">
+            <!-- Contacts seront ajoutés dynamiquement -->
+        </div>
+    </div>
+
     <!-- Écran de chat -->
     <div id="chat-screen" class="hidden">
-        <div class="container">
-            <div class="chat-container">
-                <h2>Bienvenue sur MarChat</h2>
-                <p>Vous êtes maintenant authentifié.</p>
-                <button id="logout-btn" class="btn-gold" style="margin-top: 20px;">
-                    Déconnexion
-                </button>
-            </div>
+        <div class="header">
+            <button class="back-button" id="back-to-contacts">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h1 id="current-contact">Contact</h1>
+        </div>
+        
+        <div class="messages-container" id="messages-container">
+            <!-- Messages apparaîtront ici -->
+        </div>
+        
+        <div class="message-input-container">
+            <input type="text" id="message-input" placeholder="Écrivez un message...">
+            <button id="send-message"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
 
@@ -146,6 +334,275 @@
         Authentification réussie
     </div>
 
-    <script src="app.js"></script>
+    <script>
+        class MarChatApp {
+            constructor() {
+                this.contacts = [
+                    { 
+                        id: 1, 
+                        name: "Jean Dupont", 
+                        phone: "+18095551234", 
+                        lastSeen: "En ligne",
+                        avatar: "JD"
+                    },
+                    { 
+                        id: 2, 
+                        name: "Marie Claire", 
+                        phone: "+18095556789", 
+                        lastSeen: "Aujourd'hui 10:30",
+                        avatar: "MC"
+                    },
+                    { 
+                        id: 3, 
+                        name: "Luc Antoine", 
+                        phone: "+18095550987", 
+                        lastSeen: "Hier 15:45",
+                        avatar: "LA"
+                    }
+                ];
+                
+                this.messages = {
+                    1: [
+                        { text: "Salut ! Comment ça va ?", sender: 'them', time: '10:30' },
+                        { text: "Ça va bien, merci !", sender: 'me', time: '10:32' },
+                        { text: "Tu veux qu'on se voit demain ?", sender: 'them', time: '10:33' }
+                    ],
+                    2: [
+                        { text: "Bonjour Marie !", sender: 'me', time: '09:15' },
+                        { text: "Salut ! J'ai reçu ton colis", sender: 'them', time: '09:20' }
+                    ],
+                    3: [
+                        { text: "Luc, tu as vu le match hier ?", sender: 'me', time: '22:45' }
+                    ]
+                };
+                
+                this.currentUser = null;
+                this.currentContact = null;
+                this.otpCode = "";
+                
+                this.initAuthSystem();
+                this.initEventListeners();
+            }
+            
+            initAuthSystem() {
+                // Écouteurs d'authentification
+                document.getElementById('send-otp').addEventListener('click', () => this.sendOtp());
+                document.getElementById('verify-otp').addEventListener('click', () => this.verifyOtp());
+                
+                // Gestion des inputs OTP
+                document.querySelectorAll('.otp-digit').forEach(digit => {
+                    digit.addEventListener('input', (e) => this.handleOtpInput(e));
+                    digit.addEventListener('keydown', (e) => this.handleOtpBackspace(e));
+                });
+            }
+            
+            initEventListeners() {
+                // Navigation
+                document.getElementById('back-to-contacts').addEventListener('click', () => this.showContactsScreen());
+                
+                // Chat
+                document.getElementById('send-message').addEventListener('click', () => this.sendMessage());
+                document.getElementById('message-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendMessage();
+                });
+            }
+            
+            // Authentification
+            sendOtp() {
+                const phone = this.getPhoneNumber();
+                
+                if (!this.validatePhone(phone)) {
+                    this.showError("Format invalide. Ex: +18093978951", 'auth');
+                    return;
+                }
+                
+                // Génération du code OTP
+                this.otpCode = this.generateOtp();
+                this.currentUser = { phone };
+                
+                // Simulation d'envoi SMS
+                console.log(`[SYSTEM] Code OTP pour ${phone}: ${this.otpCode}`);
+                alert(`CODE DE DÉMO : ${this.otpCode}\n\n(En production, ce code serait envoyé par SMS)`);
+                
+                this.showOtpScreen(phone);
+            }
+            
+            verifyOtp() {
+                const enteredOtp = this.getEnteredOtp();
+                
+                if (enteredOtp === this.otpCode) {
+                    this.showAuthSuccess();
+                    this.showContactsScreen();
+                } else {
+                    this.showError("Code incorrect. Veuillez réessayer.", 'otp');
+                }
+            }
+            
+            // Contacts et Chat
+            showContactsScreen() {
+                document.getElementById('otp-screen').classList.add('hidden');
+                document.getElementById('chat-screen').classList.add('hidden');
+                document.getElementById('contacts-screen').classList.remove('hidden');
+                
+                this.loadContacts();
+            }
+            
+            loadContacts() {
+                const contactsList = document.getElementById('contacts-list');
+                contactsList.innerHTML = '';
+                
+                this.contacts.forEach(contact => {
+                    const contactEl = document.createElement('div');
+                    contactEl.className = 'contact';
+                    contactEl.innerHTML = `
+                        <div class="contact-avatar">${contact.avatar}</div>
+                        <div class="contact-info">
+                            <h4>${contact.name}</h4>
+                            <p>${contact.lastSeen}</p>
+                        </div>
+                    `;
+                    contactEl.addEventListener('click', () => this.openChat(contact));
+                    contactsList.appendChild(contactEl);
+                });
+            }
+            
+            openChat(contact) {
+                this.currentContact = contact;
+                document.getElementById('contacts-screen').classList.add('hidden');
+                document.getElementById('chat-screen').classList.remove('hidden');
+                document.getElementById('current-contact').textContent = contact.name;
+                
+                this.loadMessages(contact.id);
+                document.getElementById('message-input').focus();
+            }
+            
+            loadMessages(contactId) {
+                if (!this.messages[contactId]) {
+                    this.messages[contactId] = [];
+                }
+                
+                const container = document.getElementById('messages-container');
+                container.innerHTML = '';
+                
+                this.messages[contactId].forEach(msg => {
+                    const msgEl = document.createElement('div');
+                    msgEl.className = `message ${msg.sender}`;
+                    msgEl.innerHTML = `
+                        <div class="message-text">${msg.text}</div>
+                        <div class="message-time">${msg.time}</div>
+                    `;
+                    container.appendChild(msgEl);
+                });
+                
+                container.scrollTop = container.scrollHeight;
+            }
+            
+            sendMessage() {
+                const input = document.getElementById('message-input');
+                const text = input.value.trim();
+                
+                if (text && this.currentContact) {
+                    // Ajouter le message envoyé
+                    const newMessage = {
+                        text,
+                        sender: 'me',
+                        time: this.getCurrentTime()
+                    };
+                    
+                    this.messages[this.currentContact.id].push(newMessage);
+                    this.loadMessages(this.currentContact.id);
+                    input.value = '';
+                    
+                    // Simuler une réponse après 1 seconde
+                    setTimeout(() => {
+                        const responses = [
+                            "D'accord !",
+                            "Je vois, intéressant",
+                            "Merci pour l'info",
+                            "On en parle plus tard ?",
+                            "👍"
+                        ];
+                        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                        
+                        this.messages[this.currentContact.id].push({
+                            text: randomResponse,
+                            sender: 'them',
+                            time: this.getCurrentTime()
+                        });
+                        this.loadMessages(this.currentContact.id);
+                    }, 1000);
+                }
+            }
+            
+            // Helpers
+            getPhoneNumber() {
+                return document.getElementById('country-code').value + 
+                       document.getElementById('phone').value.trim();
+            }
+            
+            validatePhone(phone) {
+                return phone.match(/\+1\d{10}/);
+            }
+            
+            generateOtp() {
+                return Math.floor(100000 + Math.random() * 900000).toString();
+            }
+            
+            getEnteredOtp() {
+                return Array.from(document.querySelectorAll('.otp-digit'))
+                           .map(input => input.value)
+                           .join('');
+            }
+            
+            clearOtpInputs() {
+                document.querySelectorAll('.otp-digit').forEach(input => input.value = '');
+            }
+            
+            getCurrentTime() {
+                return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+            
+            handleOtpInput(e) {
+                if (e.target.value.length === 1) {
+                    const nextIndex = parseInt(e.target.dataset.index) + 1;
+                    const nextInput = document.querySelector(`.otp-digit[data-index="${nextIndex}"]`);
+                    if (nextInput) nextInput.focus();
+                }
+            }
+            
+            handleOtpBackspace(e) {
+                if (e.key === 'Backspace' && e.target.value === '') {
+                    const prevIndex = parseInt(e.target.dataset.index) - 1;
+                    const prevInput = document.querySelector(`.otp-digit[data-index="${prevIndex}"]`);
+                    if (prevInput) prevInput.focus();
+                }
+            }
+            
+            // UI Functions
+            showOtpScreen(phone) {
+                document.getElementById('user-phone-display').textContent = phone;
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('otp-screen').classList.remove('hidden');
+                document.querySelector('.otp-digit').focus();
+            }
+            
+            showAuthSuccess() {
+                const statusEl = document.getElementById('auth-status');
+                statusEl.style.display = 'block';
+                setTimeout(() => statusEl.style.display = 'none', 3000);
+            }
+            
+            showError(message, screen = 'auth') {
+                const errorElement = document.getElementById(`error-message${screen === 'otp' ? '-otp' : ''}`);
+                errorElement.textContent = message;
+                setTimeout(() => errorElement.textContent = '', 5000);
+            }
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {
+            new MarChatApp();
+        });
+    </script>
 </body>
 </html>
