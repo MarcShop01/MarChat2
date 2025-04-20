@@ -3,34 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MarChat - Version Test</title>
+    <title>MarChat</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Styles de base */
         body {
             font-family: 'Segoe UI', sans-serif;
             margin: 0;
             padding: 0;
             background: #f5f5f5;
+            color: #333;
         }
         .hidden { display: none !important; }
-        .auth-container, .otp-container {
+        .container {
             max-width: 400px;
-            margin: 50px auto;
+            margin: 0 auto;
             padding: 20px;
+        }
+        .auth-container, .otp-container, .chat-container {
             background: white;
             border-radius: 10px;
+            padding: 30px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .logo i {
+            font-size: 2rem;
+            color: #FFD700;
+        }
+        .phone-input {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        #country-code {
+            width: 60px;
+            text-align: center;
+        }
+        #phone {
+            flex: 1;
         }
         .btn-gold {
             background: #FFD700;
             border: none;
-            padding: 12px 20px;
+            padding: 12px;
             border-radius: 5px;
-            cursor: pointer;
             font-weight: bold;
             width: 100%;
-            margin-top: 15px;
+            cursor: pointer;
         }
         .otp-inputs {
             display: flex;
@@ -46,76 +69,81 @@
             border: 1px solid #ddd;
             border-radius: 5px;
         }
-        #dev-tools {
+        #auth-status {
             position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: #f0f0f0;
-            padding: 10px;
+            bottom: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            padding: 10px 15px;
             border-radius: 5px;
-            font-size: 14px;
-            border: 1px solid #ccc;
+            display: none;
         }
     </style>
 </head>
 <body>
     <!-- Écran d'authentification -->
     <div id="auth-screen">
-        <div class="auth-container">
-            <div class="logo">
-                <i class="fas fa-comment-dots"></i>
-                <span>MarChat</span>
+        <div class="container">
+            <div class="auth-container">
+                <div class="logo">
+                    <i class="fas fa-comment-dots"></i>
+                    <h1>MarChat</h1>
+                </div>
+                
+                <div class="phone-input">
+                    <input type="text" id="country-code" value="+1" readonly>
+                    <input type="tel" id="phone" placeholder="8093978951" autofocus>
+                </div>
+                
+                <div id="error-message" style="color: red; min-height: 20px;"></div>
+                
+                <button id="send-otp" class="btn-gold">
+                    Suivant
+                </button>
             </div>
-            
-            <h1>Entrez votre numéro</h1>
-            <p class="subtitle">Nous enverrons un code de vérification</p>
-            
-            <div class="phone-input">
-                <input type="text" id="country-code" value="+1" readonly style="width: 50px; text-align: center;">
-                <input type="tel" id="phone" placeholder="8093978951" style="width: calc(100% - 60px);">
-            </div>
-            
-            <div id="error-message" class="error" style="color: red; min-height: 20px; margin: 10px 0;"></div>
-            
-            <button id="send-otp" class="btn-gold">
-                <span id="btn-text">Suivant</span>
-            </button>
         </div>
     </div>
 
     <!-- Écran de vérification OTP -->
     <div id="otp-screen" class="hidden">
-        <div class="otp-container">
-            <h2>Vérification du numéro</h2>
-            <p>Entrez le code à 6 chiffres envoyé au <br><span id="user-phone-display"></span></p>
-            
-            <div class="otp-inputs">
-                <input type="text" maxlength="1" class="otp-digit" data-index="0" autofocus>
-                <input type="text" maxlength="1" class="otp-digit" data-index="1">
-                <input type="text" maxlength="1" class="otp-digit" data-index="2">
-                <input type="text" maxlength="1" class="otp-digit" data-index="3">
-                <input type="text" maxlength="1" class="otp-digit" data-index="4">
-                <input type="text" maxlength="1" class="otp-digit" data-index="5">
+        <div class="container">
+            <div class="otp-container">
+                <h2>Vérification du numéro</h2>
+                <p>Entrez le code à 6 chiffres envoyé au <br><span id="user-phone-display"></span></p>
+                
+                <div class="otp-inputs">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="0" autofocus>
+                    <input type="text" maxlength="1" class="otp-digit" data-index="1">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="2">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="3">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="4">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="5">
+                </div>
+                
+                <button id="verify-otp" class="btn-gold">
+                    Vérifier
+                </button>
             </div>
-            
-            <button id="verify-otp" class="btn-gold">
-                <span id="verify-text">Vérifier</span>
-            </button>
         </div>
     </div>
 
     <!-- Écran de chat -->
     <div id="chat-screen" class="hidden">
-        <div style="max-width: 400px; margin: 0 auto; padding: 20px;">
-            <h2>Bienvenue sur MarChat !</h2>
-            <p>Mode simulation activé. Fonctionne sans serveur.</p>
+        <div class="container">
+            <div class="chat-container">
+                <h2>Bienvenue sur MarChat</h2>
+                <p>Vous êtes maintenant authentifié.</p>
+                <button id="logout-btn" class="btn-gold" style="margin-top: 20px;">
+                    Déconnexion
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- Outils développeur -->
-    <div id="dev-tools">
-        <p>Mode Développeur</p>
-        <p>Code OTP: <strong id="fake-otp">123456</strong></p>
+    <!-- Notification d'authentification -->
+    <div id="auth-status">
+        Authentification réussie
     </div>
 
     <script src="app.js"></script>
