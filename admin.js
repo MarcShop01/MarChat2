@@ -1,6 +1,19 @@
 // Configuration Firebase
-const productsRef = firebase.firestore().collection("products");
-const usersRef = firebase.firestore().collection("users");
+const firebaseConfig = {
+    apiKey: "AIzaSyBLUZl0j_gO7aZtT2zwgTISWO5ab9AFfE0",
+    authDomain: "marchat-b23f1.firebaseapp.com",
+    projectId: "marchat-b23f1",
+    storageBucket: "marchat-b23f1.firebasestorage.app",
+    messagingSenderId: "264746644024",
+    appId: "1:264746644024:web:d575bac7eb65c3d3062ccd",
+    measurementId: "G-Y9Q0XWH80H"
+};
+
+// Initialiser Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore(app);
+const productsRef = db.collection("products");
+const usersRef = db.collection("users");
 
 // Configuration admin
 const ADMIN_PASSWORD = "marcshop2024";
@@ -12,11 +25,6 @@ let isLoggedIn = false;
 
 // Initialisation
 document.addEventListener("DOMContentLoaded", async () => {
-    // Charger les données uniquement si connecté
-    if (isLoggedIn) {
-        await loadData();
-    }
-    
     setupEventListeners();
     checkAdminSession();
 });
@@ -24,26 +32,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 // Chargement des données depuis Firebase
 async function loadData() {
     try {
-        // Charger les produits depuis Firestore
+        // Charger les produits
         const productsSnapshot = await productsRef.get();
-        products = productsSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                createdAt: data.createdAt || new Date().toISOString()
-            };
-        });
+        products = productsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt || new Date().toISOString()
+        }));
         
-        // Charger les utilisateurs depuis Firestore
+        // Charger les utilisateurs
         const usersSnapshot = await usersRef.get();
-        users = usersSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data
-            };
-        });
+        users = usersSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
         
     } catch (e) {
         console.error("Erreur de chargement des données:", e);
@@ -54,15 +56,21 @@ async function loadData() {
 
 // Configuration des événements
 function setupEventListeners() {
-    document.getElementById("loginForm").addEventListener("submit", (e) => {
-        e.preventDefault();
-        login();
-    });
+    const loginForm = document.getElementById("loginForm");
+    if (loginForm) {
+        loginForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            login();
+        });
+    }
 
-    document.getElementById("productForm").addEventListener("submit", (e) => {
-        e.preventDefault();
-        addProduct();
-    });
+    const productForm = document.getElementById("productForm");
+    if (productForm) {
+        productForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            addProduct();
+        });
+    }
 }
 
 // Authentification admin
@@ -146,14 +154,22 @@ function showSection(sectionName) {
     if (sectionName === "users") renderUsersList();
 }
 
-// Gestion des produits avec Firebase
+// CORRECTION DU BOUTON AJOUTER - FONCTION ADD PRODUCT
 async function addProduct() {
+    // Récupérer les valeurs du formulaire
     const name = document.getElementById("productName").value;
-    const price = Number.parseFloat(document.getElementById("productPrice").value);
-    const originalPrice = Number.parseFloat(document.getElementById("productOriginalPrice").value);
+    const price = parseFloat(document.getElementById("productPrice").value);
+    const originalPrice = parseFloat(document.getElementById("productOriginalPrice").value);
     const category = document.getElementById("productCategory").value;
     const description = document.getElementById("productDescription").value;
 
+    // Validation des champs obligatoires
+    if (!name || isNaN(price) || isNaN(originalPrice) || !category) {
+        alert("Veuillez remplir tous les champs obligatoires (*)");
+        return;
+    }
+
+    // Récupérer les images
     const images = [
         document.getElementById("productImage1").value,
         document.getElementById("productImage2").value,
@@ -161,6 +177,13 @@ async function addProduct() {
         document.getElementById("productImage4").value,
     ].filter((img) => img.trim() !== "");
 
+    // Validation des images
+    if (images.length === 0) {
+        alert("Veuillez ajouter au moins une image");
+        return;
+    }
+
+    // Créer l'objet produit
     const newProduct = {
         name: name,
         price: price,
@@ -183,12 +206,17 @@ async function addProduct() {
             ...newProduct
         });
         
+        // Mettre à jour l'interface
         renderProductsList();
         updateStats();
+        
+        // Réinitialiser le formulaire
         document.getElementById("productForm").reset();
+        
+        // Message de succès
         alert("Produit ajouté avec succès!");
     } catch (error) {
-        console.error("Erreur lors de l'ajout du produit: ", error);
+        console.error("Erreur lors de l'ajout du produit:", error);
         alert("Erreur lors de l'ajout du produit");
     }
 }
@@ -205,7 +233,7 @@ async function deleteProduct(id) {
             renderProductsList();
             updateStats();
         } catch (error) {
-            console.error("Erreur lors de la suppression du produit: ", error);
+            console.error("Erreur lors de la suppression du produit:", error);
             alert("Erreur lors de la suppression du produit");
         }
     }
