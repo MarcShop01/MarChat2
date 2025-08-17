@@ -1,18 +1,5 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-
-// CONFIG FIREBASE - identique à l'admin !
-const firebaseConfig = {
-  apiKey: "AIzaSyC_krW6QcyTS6JZNJf-_7YAc_491mCWYaQ",
-  authDomain: "marchat-e4d21.firebaseapp.com",
-  projectId: "marchat-e4d21",
-  storageBucket: "marchat-e4d21.appspot.com",
-  messagingSenderId: "211043298263",
-  appId: "1:211043298263:web:dcf751d299aa4360d83992",
-  measurementId: "G-CZHXLDZTBW"
-};
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+import { collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+const db = window.firebaseDB;
 
 let currentUser = null;
 let products = [];
@@ -21,18 +8,18 @@ let users = [];
 let currentProductImages = [];
 let currentImageIndex = 0;
 
-// Initialisation
 document.addEventListener("DOMContentLoaded", () => {
   loadFirestoreProducts();
-  loadCartAndUsers();
+  loadFirestoreUsers();
+  loadCart();
   checkUserRegistration();
   setupEventListeners();
+  renderProducts();
   updateCartUI();
   setupLightbox();
   setupAdminListeners();
 });
 
-// Chargement des produits depuis Firestore
 function loadFirestoreProducts() {
   const productsCol = collection(db, "products");
   onSnapshot(productsCol, (snapshot) => {
@@ -44,20 +31,29 @@ function loadFirestoreProducts() {
   });
 }
 
-function loadCartAndUsers() {
+function loadFirestoreUsers() {
+  const usersCol = collection(db, "users");
+  onSnapshot(usersCol, (snapshot) => {
+    users = snapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id
+    }));
+    renderUsersAdmin();
+    updateAdminStats();
+  });
+}
+
+function loadCart() {
   try {
     cart = JSON.parse(localStorage.getItem("marcshop-cart")) || [];
-    users = JSON.parse(localStorage.getItem("marcshop-users")) || [];
     currentUser = JSON.parse(localStorage.getItem("marcshop-current-user"));
   } catch (e) {
     cart = [];
-    users = [];
   }
 }
 
-function saveData() {
+function saveCart() {
   localStorage.setItem("marcshop-cart", JSON.stringify(cart));
-  localStorage.setItem("marcshop-users", JSON.stringify(users));
   if (currentUser) {
     localStorage.setItem("marcshop-current-user", JSON.stringify(currentUser));
   }
@@ -72,13 +68,14 @@ function checkUserRegistration() {
 }
 
 function setupEventListeners() {
-  document.getElementById("registrationForm").addEventListener("submit", (e) => {
+  document.getElementById("registrationForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = document.getElementById("userName").value.trim();
     const email = document.getElementById("userEmail").value.trim();
+    const phone = document.getElementById("userPhone").value.trim();
 
-    if (name && email) {
-      registerUser(name, email);
+    if (name && email && phone) {
+      await registerUser(name, email, phone);
     }
   });
 
@@ -163,22 +160,29 @@ function changeImage(direction) {
   lightboxImg.src = currentProductImages[currentImageIndex];
 }
 
-function registerUser(name, email) {
+// Inscription utilisateur - ENREGISTRE sur Firestore
+async function registerUser(name, email, phone) {
   const newUser = {
-    id: Date.now(),
     name: name,
     email: email,
+    phone: phone,
     registeredAt: new Date().toISOString(),
     isActive: true,
     lastActivity: new Date().toISOString(),
   };
-
-  users.push(newUser);
-  currentUser = newUser;
-  saveData();
-  document.getElementById("registrationModal").classList.remove("active");
+  try {
+    const ref = await addDoc(collection(db, "users"), newUser);
+    newUser.id = ref.id;
+    currentUser = newUser;
+    saveCart();
+    document.getElementById("registrationModal").classList.remove("active");
+  } catch (e) {
+    alert("Erreur lors de l'inscription. Réessayez.");
+    console.error(e);
+  }
 }
 
+// Affichage des produits
 function renderProducts() {
   const grid = document.getElementById("productsGrid");
   const sortedProducts = [...products].sort((a, b) => 
@@ -226,6 +230,7 @@ function renderProducts() {
   }).join("");
 }
 
+// Filtrage par catégorie
 function filterByCategory(category) {
   document.querySelectorAll(".category-btn").forEach((btn) => {
     btn.classList.remove("active");
@@ -242,6 +247,7 @@ function filterByCategory(category) {
   });
 }
 
+// Gestion du panier
 window.addToCart = addToCart;
 function addToCart(productId) {
   const product = products.find((p) => p.id === productId);
@@ -261,7 +267,7 @@ function addToCart(productId) {
     });
   }
 
-  saveData();
+  saveCart();
   updateCartUI();
 
   const btn = event.target;
@@ -277,7 +283,7 @@ function addToCart(productId) {
 window.removeFromCart = removeFromCart;
 function removeFromCart(productId) {
   cart = cart.filter((item) => item.id !== productId);
-  saveData();
+  saveCart();
   updateCartUI();
 }
 
@@ -290,7 +296,7 @@ function updateQuantity(productId, newQuantity) {
   const item = cart.find((item) => item.id === productId);
   if (item) {
     item.quantity = newQuantity;
-    saveData();
+    saveCart();
     updateCartUI();
   }
 }
@@ -338,6 +344,39 @@ function updateCartUI() {
   }
 }
 
+// ADMIN : Affichage utilisateurs
+function renderUsersAdmin() {
+  const usersList = document.getElementById("usersList");
+  if (!usersList) return;
+  if (!users || users.length === 0) {
+    usersList.innerHTML = "<p>Aucun utilisateur inscrit.</p>";
+    return;
+  }
+  usersList.innerHTML = users.map(user => `
+    <div class="admin-user-card" style="background:white; margin-bottom:1rem; border-radius:0.5rem; padding:1rem;">
+      <strong>${user.name}</strong><br>
+      <span>${user.email}</span><br>
+      <span>${user.phone}</span><br>
+      <small>Inscrit le : ${user.registeredAt ? new Date(user.registeredAt).toLocaleDateString() : ""}</small>
+    </div>
+  `).join("");
+}
+function updateAdminStats() {
+  const totalUsers = document.getElementById("totalUsers");
+  if (totalUsers) totalUsers.textContent = users.length;
+  // Optionnel : calculer "actifs" selon lastActivity < 24h
+  const activeUsers = document.getElementById("activeUsers");
+  if (activeUsers) {
+    const active = users.filter(u => {
+      if (!u.lastActivity) return false;
+      const last = new Date(u.lastActivity);
+      return (new Date() - last) < 24*60*60*1000;
+    });
+    activeUsers.textContent = active.length;
+  }
+}
+
+// Interface utilisateur
 function toggleCart() {
   const sidebar = document.getElementById("cartSidebar");
   const overlay = document.getElementById("overlay");
@@ -362,7 +401,6 @@ function closeAllPanels() {
 function switchTab(tabName) {
   document.querySelectorAll(".tab-btn").forEach((btn) => btn.classList.remove("active"));
   document.querySelectorAll(".tab-content").forEach((content) => content.classList.remove("active"));
-
   document.querySelector(`[data-tab="${tabName}"]`).classList.add("active");
   document.getElementById(`${tabName}Tab`).classList.add("active");
 }
@@ -370,13 +408,8 @@ function switchTab(tabName) {
 function shareWebsite() {
   const url = window.location.href;
   const text = "Découvrez MarcShop - La meilleure boutique en ligne pour tous vos besoins!";
-
   if (navigator.share) {
-    navigator.share({
-      title: "MarcShop",
-      text: text,
-      url: url,
-    });
+    navigator.share({ title: "MarcShop", text: text, url: url });
   } else {
     navigator.clipboard.writeText(url).then(() => {
       alert("Lien copié dans le presse-papiers!");
@@ -389,16 +422,13 @@ function checkout() {
     alert("Votre panier est vide!");
     return;
   }
-
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-
   alert(
     `Commande confirmée!\n${itemCount} article(s) pour un total de $${total.toFixed(2)}\n\nMerci pour votre achat sur MarcShop!`
   );
-
   cart = [];
-  saveData();
+  saveCart();
   updateCartUI();
   closeAllPanels();
 }
