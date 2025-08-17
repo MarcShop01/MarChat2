@@ -10,12 +10,12 @@ import {
 
 // Configuration Firebase (à remplacer par la vôtre)
 const firebaseConfig = {
-  apiKey: "VOTRE_API_KEY",
-  authDomain: "VOTRE_AUTH_DOMAIN",
-  projectId: "VOTRE_PROJECT_ID",
-  storageBucket: "VOTRE_STORAGE_BUCKET",
-  messagingSenderId: "VOTRE_SENDER_ID",
-  appId: "VOTRE_APP_ID"
+  apiKey: "AIzaSyBLUZl0j_gO7aZtT2zwgTISWO5ab9AFfE0",
+  authDomain: "marchat-b23f1.firebaseapp.com",
+  projectId: "marchat-b23f1",
+  storageBucket: "marchat-b23f1.firebasestorage.app",
+  messagingSenderId: "264746644024",
+  appId: "1:264746644024:web:d575bac7eb65c3d3062ccd"
 };
 
 // Initialiser Firebase
