@@ -1,5 +1,8 @@
+// admin.js - version compatible avec Firebase 12.x (type="module" recommandé)
+// ATTENTION : Ce fichier doit être chargé avec <script src="admin.js" type="module"></script> dans admin.html
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 // Nouvelle configuration Firebase
 const firebaseConfig = {
@@ -29,7 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
   listenProducts();
 });
 
-// Gestion des produits Firestore
+// Ecoute Firestore en temps réel pour les produits
 function listenProducts() {
   const productsCol = collection(db, "products");
   onSnapshot(productsCol, (snapshot) => {
@@ -42,97 +45,13 @@ function listenProducts() {
   });
 }
 
-// Ajouter un produit
-async function addProduct() {
-  const name = document.getElementById("productName").value;
-  const price = Number.parseFloat(document.getElementById("productPrice").value);
-  const originalPrice = Number.parseFloat(document.getElementById("productOriginalPrice").value);
-  const category = document.getElementById("productCategory").value;
-  const description = document.getElementById("productDescription").value;
-
-  const images = [
-    document.getElementById("productImage1").value,
-    document.getElementById("productImage2").value,
-    document.getElementById("productImage3").value,
-    document.getElementById("productImage4").value,
-  ].filter((img) => img.trim() !== "");
-
-  if (!name || isNaN(price) || isNaN(originalPrice) || !category || images.length === 0) {
-    alert("Veuillez remplir tous les champs obligatoires (*) et fournir au moins 1 image.");
-    return;
-  }
-
-  const newProduct = {
-    name: name,
-    price: price,
-    originalPrice: originalPrice,
-    images: images,
-    category: category,
-    description: description,
-    stock: 100,
-    status: "active",
-    createdAt: new Date().toISOString()
-  };
-
+// Chargement des utilisateurs depuis localStorage (à adapter si tu passes à Firestore pour users)
+function loadUsers() {
   try {
-    await addDoc(collection(db, "products"), newProduct);
-    document.getElementById("productForm").reset();
-    alert("Produit ajouté avec succès !");
+    users = JSON.parse(localStorage.getItem("marcshop-users")) || [];
   } catch (e) {
-    alert("Erreur lors de l'ajout du produit : " + e.message);
+    users = [];
   }
-}
-
-// Supprimer un produit
-async function deleteProduct(id) {
-  if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
-    try {
-      await deleteDoc(doc(db, "products", id));
-    } catch (e) {
-      alert("Erreur lors de la suppression: " + e.message);
-    }
-  }
-}
-
-// Affichage des produits Firestore
-function renderProductsList() {
-  const productsList = document.getElementById("productsList");
-
-  if (products.length === 0) {
-    productsList.innerHTML = "<p>Aucun produit ajouté.</p>";
-    return;
-  }
-
-  // Trier les produits par date de création (récent en premier)
-  const sortedProducts = [...products].sort((a, b) =>
-    new Date(b.createdAt) - new Date(a.createdAt)
-  );
-
-  productsList.innerHTML = `
-    <h3>Produits existants (${sortedProducts.length})</h3>
-    <div style="display: grid; gap: 1rem;">
-      ${sortedProducts
-        .map(
-          (product) => `
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white;">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-              <img src="${product.images[0] || 'https://via.placeholder.com/60x60?text=Image+Manquante'}" alt="${product.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 0.375rem;">
-              <div>
-                <strong>${product.name}</strong><br>
-                <span style="color: #10b981; font-weight: bold;">$${product.price.toFixed(2)}</span>
-                <span style="color: #6b7280; text-decoration: line-through; margin-left: 0.5rem;">$${product.originalPrice.toFixed(2)}</span><br>
-                <span style="color: #6b7280; font-size: 0.875rem;">${product.category}</span>
-              </div>
-            </div>
-            <button onclick="deleteProduct('${product.id}')" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer;">
-              <i class="fas fa-trash"></i> Supprimer
-            </button>
-          </div>
-        `
-        )
-        .join("")}
-    </div>
-  `;
 }
 
 // Configuration des événements
@@ -168,13 +87,11 @@ function login() {
   const password = document.getElementById("adminPassword").value;
 
   if (password === ADMIN_PASSWORD) {
-    // Créer une session admin
     const sessionData = {
       timestamp: new Date().getTime(),
       isAdmin: true,
     };
     localStorage.setItem("marcshop-admin-session", JSON.stringify(sessionData));
-
     showDashboard();
   } else {
     alert("Mot de passe incorrect!");
@@ -198,61 +115,156 @@ function showDashboard() {
   document.getElementById("adminDashboard").style.display = "block";
   isLoggedIn = true;
 
+  loadUsers();
   updateStats();
   renderProductsList();
   renderUsersList();
 }
 
 // Navigation admin
-function showSection(sectionName) {
+window.showSection = function(sectionName) {
   document.querySelectorAll(".sidebar-btn").forEach((btn) => btn.classList.remove("active"));
   document.querySelectorAll(".admin-section").forEach((section) => section.classList.remove("active"));
 
-  event.target.classList.add("active");
-  document.getElementById(sectionName + "Section").classList.add("active");
+  // Active le bouton
+  const activeBtn = document.querySelector(`.sidebar-btn[onclick*="${sectionName}"]`);
+  if (activeBtn) activeBtn.classList.add("active");
 
-  // Actualiser les données selon la section
+  // Active la section
+  const section = document.getElementById(sectionName + "Section");
+  if (section) section.classList.add("active");
+
+  // Rafraîchit les infos
   if (sectionName === "dashboard") updateStats();
   if (sectionName === "products") renderProductsList();
   if (sectionName === "users") renderUsersList();
 }
 
-// Gestion des utilisateurs (toujours en local, à adapter si tu veux Firestore plus tard)
+// Gestion des produits Firestore
+async function addProduct() {
+  const name = document.getElementById("productName").value;
+  const price = parseFloat(document.getElementById("productPrice").value);
+  const originalPrice = parseFloat(document.getElementById("productOriginalPrice").value);
+  const category = document.getElementById("productCategory").value;
+  const description = document.getElementById("productDescription").value;
+
+  const images = [
+    document.getElementById("productImage1").value,
+    document.getElementById("productImage2").value,
+    document.getElementById("productImage3").value,
+    document.getElementById("productImage4").value,
+  ].filter((img) => img.trim() !== "");
+
+  if (!name || isNaN(price) || isNaN(originalPrice) || !category || images.length === 0) {
+    alert("Veuillez remplir tous les champs obligatoires (*) et fournir au moins 1 image.");
+    return;
+  }
+
+  const newProduct = {
+    name,
+    price,
+    originalPrice,
+    images,
+    category,
+    description,
+    stock: 100,
+    status: "active",
+    createdAt: new Date().toISOString()
+  };
+
+  try {
+    await addDoc(collection(db, "products"), newProduct);
+    document.getElementById("productForm").reset();
+    alert("Produit ajouté avec succès !");
+  } catch (e) {
+    alert("Erreur lors de l'ajout du produit : " + e.message);
+    console.error(e);
+  }
+}
+
+// Supprimer un produit
+window.deleteProduct = async function(id) {
+  if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
+    try {
+      await deleteDoc(doc(db, "products", id));
+    } catch (e) {
+      alert("Erreur lors de la suppression: " + e.message);
+      console.error(e);
+    }
+  }
+}
+
+// Affichage des produits
+function renderProductsList() {
+  const productsList = document.getElementById("productsList");
+
+  if (!products || products.length === 0) {
+    productsList.innerHTML = "<p>Aucun produit ajouté.</p>";
+    return;
+  }
+
+  const sortedProducts = [...products].sort((a, b) =>
+    new Date(b.createdAt) - new Date(a.createdAt)
+  );
+
+  productsList.innerHTML = `
+    <h3>Produits existants (${sortedProducts.length})</h3>
+    <div style="display: grid; gap: 1rem;">
+      ${sortedProducts.map((product) => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <img src="${product.images[0] || 'https://via.placeholder.com/60x60?text=Image+Manquante'}" alt="${product.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 0.375rem;">
+            <div>
+              <strong>${product.name}</strong><br>
+              <span style="color: #10b981; font-weight: bold;">$${product.price.toFixed(2)}</span>
+              <span style="color: #6b7280; text-decoration: line-through; margin-left: 0.5rem;">$${product.originalPrice.toFixed(2)}</span><br>
+              <span style="color: #6b7280; font-size: 0.875rem;">${product.category}</span>
+            </div>
+          </div>
+          <button onclick="deleteProduct('${product.id}')" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer;">
+            <i class="fas fa-trash"></i> Supprimer
+          </button>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+// Gestion des utilisateurs (localStorage)
 function renderUsersList() {
   const usersList = document.getElementById("usersList");
 
-  if (users.length === 0) {
+  if (!users || users.length === 0) {
     usersList.innerHTML = "<p>Aucun utilisateur inscrit.</p>";
     return;
   }
 
   usersList.innerHTML = `
-        <h3>Utilisateurs inscrits (${users.length})</h3>
-        <div style="display: grid; gap: 1rem;">
-            ${users
-              .map((user) => {
-                const isActive = isUserActive(user);
-                return `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white;">
-                        <div>
-                            <strong>${user.name}</strong><br>
-                            <span style="color: #6b7280;">${user.email}</span><br>
-                            <small>Inscrit le: ${new Date(user.registeredAt).toLocaleDateString()}</small>
-                        </div>
-                        <div style="text-align: right;">
-                            <span style="background: ${isActive ? "#10b981" : "#6b7280"}; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
-                                ${isActive ? "Actif" : "Inactif"}
-                            </span>
-                        </div>
-                    </div>
-                `;
-              })
-              .join("")}
-        </div>
-    `;
+    <h3>Utilisateurs inscrits (${users.length})</h3>
+    <div style="display: grid; gap: 1rem;">
+      ${users.map((user) => {
+        const isActive = isUserActive(user);
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white;">
+            <div>
+              <strong>${user.name}</strong><br>
+              <span style="color: #6b7280;">${user.email}</span><br>
+              <small>Inscrit le: ${new Date(user.registeredAt).toLocaleDateString()}</small>
+            </div>
+            <div style="text-align: right;">
+              <span style="background: ${isActive ? "#10b981" : "#6b7280"}; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
+                ${isActive ? "Actif" : "Inactif"}
+              </span>
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
 }
 
 function isUserActive(user) {
+  if (!user.lastActivity) return false;
   const lastActivity = new Date(user.lastActivity);
   const now = new Date();
   const diffHours = (now - lastActivity) / (1000 * 60 * 60);
