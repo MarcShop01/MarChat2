@@ -154,12 +154,18 @@ function showSection(sectionName) {
     if (sectionName === "users") renderUsersList();
 }
 
-// CORRECTION DU BOUTON AJOUTER - FONCTION ADD PRODUCT
+// CORRECTION DU FORMAT DES NOMBRES - FONCTION ADD PRODUCT
 async function addProduct() {
     // Récupérer les valeurs du formulaire
     const name = document.getElementById("productName").value;
-    const price = parseFloat(document.getElementById("productPrice").value);
-    const originalPrice = parseFloat(document.getElementById("productOriginalPrice").value);
+    
+    // CORRECTION: Gérer les virgules dans les nombres
+    const priceValue = document.getElementById("productPrice").value.replace(',', '.');
+    const originalPriceValue = document.getElementById("productOriginalPrice").value.replace(',', '.');
+    
+    const price = parseFloat(priceValue);
+    const originalPrice = parseFloat(originalPriceValue);
+    
     const category = document.getElementById("productCategory").value;
     const description = document.getElementById("productDescription").value;
 
@@ -217,7 +223,7 @@ async function addProduct() {
         alert("Produit ajouté avec succès!");
     } catch (error) {
         console.error("Erreur lors de l'ajout du produit:", error);
-        alert("Erreur lors de l'ajout du produit");
+        alert("Erreur lors de l'ajout du produit: " + error.message);
     }
 }
 
