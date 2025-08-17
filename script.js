@@ -1,73 +1,71 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { 
+  getFirestore, 
+  collection, 
+  getDocs 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+// Configuration Firebase (identique à celle de admin.js)
+const firebaseConfig = {
+  apiKey: "VOTRE_API_KEY",
+  authDomain: "VOTRE_AUTH_DOMAIN",
+  projectId: "VOTRE_PROJECT_ID",
+  storageBucket: "VOTRE_STORAGE_BUCKET",
+  messagingSenderId: "VOTRE_SENDER_ID",
+  appId: "VOTRE_APP_ID"
+};
+
+// Initialiser Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 // État global de l'application
 let currentUser = null;
-let products = [];
+let products = []; // Les produits chargés depuis Firebase
 let cart = [];
 let users = [];
 let currentProductImages = [];
 let currentImageIndex = 0;
 
+// Charger les produits depuis Firebase
+async function loadProducts() {
+  try {
+    const querySnapshot = await getDocs(collection(db, "products"));
+    const loadedProducts = [];
+    
+    querySnapshot.forEach(doc => {
+      loadedProducts.push({ id: doc.id, ...doc.data() });
+    });
+    
+    // Trier par date de création (récent en premier)
+    loadedProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    return loadedProducts;
+  } catch (error) {
+    console.error("Erreur de chargement:", error);
+    return [];
+  }
+}
+
 // Initialisation
-document.addEventListener("DOMContentLoaded", () => {
-  loadData();
+document.addEventListener("DOMContentLoaded", async () => {
+  // Charger les produits depuis Firebase
+  products = await loadProducts();
+  
+  // Charger les données locales
+  cart = JSON.parse(localStorage.getItem("marcshop-cart")) || [];
+  users = JSON.parse(localStorage.getItem("marcshop-users")) || [];
+  currentUser = JSON.parse(localStorage.getItem("marcshop-current-user"));
+  
   checkUserRegistration();
   setupEventListeners();
   renderProducts();
   updateCartUI();
   setupLightbox();
-  setupAdminListeners();
-  setupPaymentListeners();
 });
 
-// Configuration des événements de paiement
-function setupPaymentListeners() {
-  document.querySelectorAll('.method-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-      // Mettre à jour les boutons actifs
-      document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
-      this.classList.add('active');
-      
-      // Afficher la section correspondante
-      const method = this.dataset.method;
-      document.querySelectorAll('.payment-section').forEach(section => {
-        section.classList.remove('active');
-      });
-      document.getElementById(`${method}Section`).classList.add('active');
-      
-      // Mettre à jour le montant Natcash si nécessaire
-      if (method === 'natcash') {
-        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        document.getElementById('natcashAmount').textContent = '$' + total.toFixed(2);
-      }
-    });
-  });
-}
-
 // Gestion des données localStorage
-function loadData() {
-  try {
-    products = JSON.parse(localStorage.getItem("marcshop-products")) || [];
-    cart = JSON.parse(localStorage.getItem("marcshop-cart")) || [];
-    users = JSON.parse(localStorage.getItem("marcshop-users")) || [];
-    currentUser = JSON.parse(localStorage.getItem("marcshop-current-user"));
-    
-    // Correction pour les anciens produits sans createdAt
-    products = products.map(p => {
-      if (!p.createdAt) {
-        p.createdAt = new Date().toISOString();
-      }
-      return p;
-    });
-    
-  } catch (e) {
-    console.error("Erreur de chargement des données:", e);
-    products = [];
-    cart = [];
-    users = [];
-  }
-}
-
 function saveData() {
-  localStorage.setItem("marcshop-products", JSON.stringify(products));
   localStorage.setItem("marcshop-cart", JSON.stringify(cart));
   localStorage.setItem("marcshop-users", JSON.stringify(users));
   if (currentUser) {
@@ -124,40 +122,6 @@ function setupLightbox() {
   window.addEventListener("click", (e) => {
     if (e.target === lightbox) closeLightbox();
   });
-  
-  // Navigation au clavier
-  document.addEventListener("keydown", (e) => {
-    if (lightbox.style.display === "block") {
-      if (e.key === "ArrowLeft") changeImage(-1);
-      if (e.key === "ArrowRight") changeImage(1);
-      if (e.key === "Escape") closeLightbox();
-    }
-  });
-}
-
-// Configuration des écouteurs admin
-function setupAdminListeners() {
-  // Formulaire d'ajout de produit
-  const productForm = document.getElementById("productForm");
-  if (productForm) {
-    productForm.addEventListener("submit", function(e) {
-      e.preventDefault();
-      addProduct();
-    });
-  }
-  
-  // Bouton d'administration
-  const adminBtn = document.querySelector(".admin-btn");
-  if (adminBtn) {
-    adminBtn.addEventListener("click", toggleAdmin);
-  }
-  
-  // Tabs admin
-  document.querySelectorAll(".tab-btn").forEach(btn => {
-    btn.addEventListener("click", function() {
-      switchTab(this.dataset.tab);
-    });
-  });
 }
 
 // Fonctions pour la lightbox
@@ -210,67 +174,11 @@ function registerUser(name, email) {
   document.getElementById("registrationModal").classList.remove("active");
 }
 
-// Gestion des produits
-function addProduct() {
-  const name = document.getElementById("productName").value;
-  const price = parseFloat(document.getElementById("productPrice").value);
-  const originalPrice = parseFloat(document.getElementById("productOriginalPrice").value);
-  const image1 = document.getElementById("productImage1").value;
-  const image2 = document.getElementById("productImage2").value;
-  const image3 = document.getElementById("productImage3").value;
-  const image4 = document.getElementById("productImage4").value;
-  const category = document.getElementById("productCategory").value;
-  const description = document.getElementById("productDescription").value;
-
-  // Validation des champs obligatoires
-  if (!name || isNaN(price) || isNaN(originalPrice) || !image1 || !category) {
-    alert("Veuillez remplir tous les champs obligatoires (*)");
-    return;
-  }
-
-  const images = [image1];
-  if (image2) images.push(image2);
-  if (image3) images.push(image3);
-  if (image4) images.push(image4);
-
-  const newProduct = {
-    id: Date.now(),
-    name: name,
-    price: price,
-    originalPrice: originalPrice,
-    images: images,
-    category: category,
-    description: description,
-    stock: 100,
-    status: "active",
-    createdAt: new Date().toISOString()
-  };
-
-  products.push(newProduct);
-  saveData();
-  renderProducts();
-  document.getElementById("productForm").reset();
-  alert("Produit ajouté avec succès!");
-}
-
-function deleteProduct(id) {
-  if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
-    products = products.filter((p) => p.id !== id);
-    saveData();
-    renderProducts();
-  }
-}
-
 // Affichage des produits
 function renderProducts() {
   const grid = document.getElementById("productsGrid");
   
-  // Trier les produits par date de création (les plus récents en premier)
-  const sortedProducts = [...products].sort((a, b) => 
-    new Date(b.createdAt) - new Date(a.createdAt)
-  );
-
-  if (sortedProducts.length === 0) {
+  if (products.length === 0) {
     grid.innerHTML = `
       <div class="no-products">
         <h3>Aucun produit disponible</h3>
@@ -280,7 +188,7 @@ function renderProducts() {
     return;
   }
 
-  grid.innerHTML = sortedProducts.map(product => {
+  grid.innerHTML = products.map(product => {
     const discount = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
     const rating = 4.0 + Math.random() * 1.0;
     const reviews = Math.floor(Math.random() * 1000) + 100;
@@ -289,7 +197,7 @@ function renderProducts() {
     
     return `
       <div class="product-card" data-category="${product.category}">
-        <div class="product-image" onclick="openLightbox(${product.id})">
+        <div class="product-image" onclick="openLightbox('${product.id}')">
           <img src="${firstImage}" alt="${product.name}" class="product-img">
           <div class="product-badge">NOUVEAU</div>
           <div class="discount-badge">-${discount}%</div>
@@ -304,7 +212,7 @@ function renderProducts() {
             <span class="current-price">$${product.price.toFixed(2)}</span>
             <span class="original-price">$${product.originalPrice.toFixed(2)}</span>
           </div>
-          <button class="add-to-cart" onclick="addToCart(${product.id}); event.stopPropagation()">
+          <button class="add-to-cart" onclick="addToCart('${product.id}'); event.stopPropagation()">
             <i class="fas fa-shopping-cart"></i> Ajouter
           </button>
         </div>
@@ -411,10 +319,10 @@ function updateCartUI() {
                     <div class="cart-item-name">${item.name}</div>
                     <div class="cart-item-price">$${item.price.toFixed(2)}</div>
                     <div class="quantity-controls">
-                        <button class="quantity-btn" onclick="updateQuantity(${item.id}, ${item.quantity - 1})">-</button>
+                        <button class="quantity-btn" onclick="updateQuantity('${item.id}', ${item.quantity - 1})">-</button>
                         <span>${item.quantity}</span>
-                        <button class="quantity-btn" onclick="updateQuantity(${item.id}, ${item.quantity + 1})">+</button>
-                        <button class="quantity-btn" onclick="removeFromCart(${item.id})" style="margin-left: 1rem; color: #ef4444;">
+                        <button class="quantity-btn" onclick="updateQuantity('${item.id}', ${item.quantity + 1})">+</button>
+                        <button class="quantity-btn" onclick="removeFromCart('${item.id}')" style="margin-left: 1rem; color: #ef4444;">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -446,7 +354,6 @@ function toggleAdmin() {
 function closeAllPanels() {
   document.getElementById("cartSidebar").classList.remove("active");
   document.getElementById("adminPanel").classList.remove("active");
-  document.getElementById("paymentModal").classList.remove("active");
   document.getElementById("overlay").classList.remove("active");
   closeLightbox();
 }
@@ -477,89 +384,37 @@ function shareWebsite() {
   }
 }
 
-// Nouvelle fonction pour le checkout
 function checkout() {
-    if (cart.length === 0) {
-        alert("Votre panier est vide!");
-        return;
-    }
+  if (cart.length === 0) {
+    alert("Votre panier est vide!");
+    return;
+  }
 
-    // Afficher le modal de paiement
-    document.getElementById("paymentModal").classList.add("active");
-    document.getElementById("overlay").classList.add("active");
-    
-    // Initialiser PayPal
-    initPayPal();
-    
-    // Mettre à jour le montant Natcash
-    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    document.getElementById('natcashAmount').textContent = '$' + total.toFixed(2);
+  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  alert(
+    `Commande confirmée!\n${itemCount} article(s) pour un total de $${total.toFixed(2)}\n\nMerci pour votre achat sur MarcShop!`
+  );
+
+  // Vider le panier
+  cart = [];
+  saveData();
+  updateCartUI();
+  closeAllPanels();
 }
 
-// Initialisation PayPal
-function initPayPal() {
-    paypal.Buttons({
-        createOrder: function(data, actions) {
-            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            return actions.order.create({
-                purchase_units: [{
-                    amount: {
-                        value: total.toFixed(2)
-                    }
-                }]
-            });
-        },
-        onApprove: function(data, actions) {
-            return actions.order.capture().then(function(details) {
-                completePayment("PayPal", details.id);
-            });
-        },
-        onError: function(err) {
-            alert("Erreur de paiement PayPal: " + err);
-        }
-    }).render('#paypal-button-container');
-}
-
-// Traitement paiement carte
-function processCardPayment() {
-    // Simuler le traitement
-    showProcessing();
-    
-    setTimeout(() => {
-        completePayment("Carte Bancaire", "CARD-" + Math.random().toString(36).substr(2, 9).toUpperCase());
-    }, 2000);
-}
-
-// Traitement paiement Natcash
-function completeNatcashPayment() {
-    // Simuler le traitement
-    showProcessing();
-    
-    setTimeout(() => {
-        completePayment("Natcash", "NATCASH-" + Math.random().toString(36).substr(2, 9).toUpperCase());
-    }, 2000);
-}
-
-// Affichage du traitement
-function showProcessing() {
-    document.querySelectorAll('.pay-btn').forEach(btn => {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Traitement...';
-    });
-}
-
-// Finalisation du paiement
-function completePayment(method, transactionId) {
-    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    
-    alert(`Paiement réussi via ${method}!\nID de transaction: ${transactionId}\nMontant: $${total.toFixed(2)}`);
-    
-    // Réinitialiser le panier
-    cart = [];
-    saveData();
-    updateCartUI();
-    closeAllPanels();
-    
-    // Fermer le modal de paiement
-    document.getElementById("paymentModal").classList.remove("active");
-}
+// Exposer les fonctions globales
+window.openLightbox = openLightbox;
+window.closeLightbox = closeLightbox;
+window.changeImage = changeImage;
+window.addToCart = addToCart;
+window.updateQuantity = updateQuantity;
+window.removeFromCart = removeFromCart;
+window.toggleCart = toggleCart;
+window.toggleAdmin = toggleAdmin;
+window.closeAllPanels = closeAllPanels;
+window.switchTab = switchTab;
+window.shareWebsite = shareWebsite;
+window.checkout = checkout;
+window.filterByCategory = filterByCategory;
