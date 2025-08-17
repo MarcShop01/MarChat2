@@ -576,7 +576,7 @@ body {
   font-size: 1.25rem;
 }
 
-/* Lightbox Styles CORRIGÉ */
+/* Lightbox Styles - Rétabli à la version originale */
 .lightbox {
   display: none;
   position: fixed;
@@ -594,19 +594,6 @@ body {
   margin: 0 auto;
   max-width: 80%;
   max-height: 80%;
-  /* ANIMATION CORRECTE POUR LA ROTATION */
-  animation: rotate 0.8s ease-out;
-}
-
-@keyframes rotate {
-  0% { 
-    transform: rotateY(0deg); 
-    opacity: 0; 
-  }
-  100% { 
-    transform: rotateY(360deg); 
-    opacity: 1; 
-  }
 }
 
 .close {
@@ -616,7 +603,6 @@ body {
   color: #f1f1f1;
   font-size: 40px;
   cursor: pointer;
-  z-index: 2;
 }
 
 .arrow {
@@ -627,9 +613,6 @@ body {
   padding: 16px;
   cursor: pointer;
   transform: translateY(-50%);
-  background: rgba(0,0,0,0.3);
-  border-radius: 50%;
-  z-index: 2;
 }
 
 .next { right: 0; }
@@ -716,12 +699,28 @@ body {
 @media (max-width: 768px) {
   .header-content {
     flex-wrap: wrap;
+    height: auto;
+    padding: 1rem 0;
+  }
+
+  .logo {
+    order: 1;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 1rem;
   }
 
   .search-bar {
+    order: 2;
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  .header-actions {
     order: 3;
     width: 100%;
-    margin-top: 1rem;
+    justify-content: center;
   }
 
   .cart-sidebar,
@@ -732,7 +731,7 @@ body {
   }
 
   .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
   
   .lightbox-content {
