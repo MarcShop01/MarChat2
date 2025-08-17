@@ -110,7 +110,7 @@ function setupEventListeners() {
   });
 }
 
-// Configuration de la lightbox (AMÉLIORÉE)
+// Configuration de la lightbox
 function setupLightbox() {
   const lightbox = document.getElementById("productLightbox");
   const closeBtn = lightbox.querySelector(".close");
@@ -160,7 +160,7 @@ function setupAdminListeners() {
   });
 }
 
-// Fonctions pour la lightbox (CORRIGÉES)
+// Fonctions pour la lightbox
 function openLightbox(productId, imgIndex = 0) {
   const product = products.find(p => p.id === productId);
   if (!product || !product.images || product.images.length === 0) return;
@@ -170,13 +170,6 @@ function openLightbox(productId, imgIndex = 0) {
   
   const lightboxImg = document.getElementById("lightboxImage");
   lightboxImg.src = currentProductImages[currentImageIndex];
-  
-  // Réinitialiser l'animation
-  lightboxImg.style.animation = 'none';
-  setTimeout(() => {
-    lightboxImg.style.animation = '';
-  }, 10);
-  
   document.getElementById("productLightbox").style.display = "block";
   document.getElementById("overlay").classList.add("active");
 }
@@ -197,12 +190,6 @@ function changeImage(direction) {
   
   const lightboxImg = document.getElementById("lightboxImage");
   lightboxImg.src = currentProductImages[currentImageIndex];
-  
-  // Réappliquer l'animation à chaque changement d'image
-  lightboxImg.style.animation = 'none';
-  setTimeout(() => {
-    lightboxImg.style.animation = 'rotate 0.8s ease-out';
-  }, 10);
 }
 
 // Inscription utilisateur
