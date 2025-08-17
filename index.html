@@ -7,8 +7,10 @@
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- SDK PayPal -->
-    <script src="https://www.paypal.com/sdk/js?client-id=AX4iV51P3BZMi2XMsaCvCWpHRKzVLsXSBTpCiJg16aZ62_ToUcO3Y-KLtA3v_0rM_LHfM2W7dmGbsOZF&currency=USD"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module" src="admin.js"></script>
+    <script type="module" src="script.js"></script>
 </head>
 <body>
     <!-- Modal d'inscription -->
@@ -182,67 +184,5 @@
         <span class="arrow next">&#10095;</span>
         <img class="lightbox-content" id="lightboxImage">
     </div>
-
-    <!-- Modal de Paiement -->
-    <div id="paymentModal" class="modal">
-        <div class="modal-content">
-            <h2>Finaliser votre commande</h2>
-            <div class="payment-methods">
-                <button class="method-btn active" data-method="paypal">
-                    <i class="fab fa-paypal"></i> PayPal
-                </button>
-                <button class="method-btn" data-method="card">
-                    <i class="fas fa-credit-card"></i> Carte Bancaire
-                </button>
-                <button class="method-btn" data-method="natcash">
-                    <i class="fas fa-mobile-alt"></i> Natcash
-                </button>
-            </div>
-
-            <div id="paypalSection" class="payment-section active">
-                <div id="paypal-button-container"></div>
-            </div>
-
-            <div id="cardSection" class="payment-section">
-                <form id="cardForm">
-                    <div class="input-group">
-                        <i class="fas fa-user"></i>
-                        <input type="text" placeholder="Nom sur la carte" required>
-                    </div>
-                    <div class="input-group">
-                        <i class="fas fa-credit-card"></i>
-                        <input type="text" placeholder="Numéro de carte" required>
-                    </div>
-                    <div class="input-row">
-                        <div class="input-group">
-                            <i class="fas fa-calendar"></i>
-                            <input type="text" placeholder="MM/AA" required>
-                        </div>
-                        <div class="input-group">
-                            <i class="fas fa-lock"></i>
-                            <input type="text" placeholder="CVV" required>
-                        </div>
-                    </div>
-                    <button type="button" class="pay-btn" onclick="processCardPayment()">
-                        Payer avec carte
-                    </button>
-                </form>
-            </div>
-
-            <div id="natcashSection" class="payment-section">
-                <div class="natcash-info">
-                    <p>Scannez le QR code Natcash avec votre application mobile pour effectuer le paiement :</p>
-                    <img src="natcash_qr.jpg" alt="QR Code Natcash" class="natcash-qr">
-                    <p>Montant: <strong id="natcashAmount">$0.00</strong></p>
-                    <p>Numéro de compte: <strong>+509 1234 5678</strong></p>
-                    <button class="pay-btn" onclick="completeNatcashPayment()">
-                        J'ai effectué le paiement
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="script.js"></script>
 </body>
 </html>
