@@ -1,18 +1,19 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-// CONFIG FIREBASE (remplace les valeurs par ton projet)
+// CONFIG FIREBASE - identique à l'admin !
 const firebaseConfig = {
-   apiKey: "AIzaSyCTvZuMrUJSkTlY3ys6wXU9Ddha-gqsQSI",
-  authDomain: "marcshop1-87785.firebaseapp.com",
-  projectId: "marcshop1-87785",
-  storageBucket: "marcshop1-87785.firebasestorage.app",
-  messagingSenderId: "243991863922",
-  appId: "1:243991863922:web:14f33371ead26d142218eb"
+  apiKey: "AIzaSyC_krW6QcyTS6JZNJf-_7YAc_491mCWYaQ",
+  authDomain: "marchat-e4d21.firebaseapp.com",
+  projectId: "marchat-e4d21",
+  storageBucket: "marchat-e4d21.appspot.com",
+  messagingSenderId: "211043298263",
+  appId: "1:211043298263:web:dcf751d299aa4360d83992",
+  measurementId: "G-CZHXLDZTBW"
+};
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// État global de l'application
 let currentUser = null;
 let products = [];
 let cart = [];
@@ -43,14 +44,12 @@ function loadFirestoreProducts() {
   });
 }
 
-// Chargement du panier et des users depuis localStorage
 function loadCartAndUsers() {
   try {
     cart = JSON.parse(localStorage.getItem("marcshop-cart")) || [];
     users = JSON.parse(localStorage.getItem("marcshop-users")) || [];
     currentUser = JSON.parse(localStorage.getItem("marcshop-current-user"));
   } catch (e) {
-    console.error("Erreur de chargement des données:", e);
     cart = [];
     users = [];
   }
@@ -64,7 +63,6 @@ function saveData() {
   }
 }
 
-// Vérification inscription utilisateur
 function checkUserRegistration() {
   if (!currentUser) {
     setTimeout(() => {
@@ -73,9 +71,7 @@ function checkUserRegistration() {
   }
 }
 
-// Configuration des événements
 function setupEventListeners() {
-  // Formulaire d'inscription
   document.getElementById("registrationForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const name = document.getElementById("userName").value.trim();
@@ -86,20 +82,17 @@ function setupEventListeners() {
     }
   });
 
-  // Filtres de catégories
   document.querySelectorAll(".category-btn").forEach((btn) => {
     btn.addEventListener("click", function () {
       filterByCategory(this.dataset.category);
     });
   });
 
-  // Overlay
   document.getElementById("overlay").addEventListener("click", () => {
     closeAllPanels();
   });
 }
 
-// Configuration de la lightbox
 function setupLightbox() {
   const lightbox = document.getElementById("productLightbox");
   const closeBtn = lightbox.querySelector(".close");
@@ -115,16 +108,13 @@ function setupLightbox() {
   });
 }
 
-// Désactivation du formulaire d'ajout de produit sur la page d'accueil
 function setupAdminListeners() {
-  // Formulaire d'ajout de produit
   const productForm = document.getElementById("productForm");
   if (productForm) {
     productForm.addEventListener("submit", function(e) {
       e.preventDefault();
       alert("L'ajout de produit est réservé à l'administrateur via la page admin.");
     });
-    // Désactiver le bouton
     const submitBtn = productForm.querySelector('button[type="submit"]');
     if (submitBtn) {
       submitBtn.disabled = true;
@@ -132,12 +122,10 @@ function setupAdminListeners() {
       submitBtn.title = "Ajout réservé à l'admin";
     }
   }
-  // Bouton d'administration
   const adminBtn = document.querySelector(".admin-btn");
   if (adminBtn) {
     adminBtn.addEventListener("click", toggleAdmin);
   }
-  // Tabs admin
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", function() {
       switchTab(this.dataset.tab);
@@ -145,7 +133,7 @@ function setupAdminListeners() {
   });
 }
 
-// Fonctions pour la lightbox
+window.openLightbox = openLightbox;
 function openLightbox(productId, imgIndex = 0) {
   const product = products.find(p => p.id === productId);
   if (!product || !product.images || product.images.length === 0) return;
@@ -166,18 +154,15 @@ function closeLightbox() {
 
 function changeImage(direction) {
   currentImageIndex += direction;
-  
   if (currentImageIndex < 0) {
     currentImageIndex = currentProductImages.length - 1;
   } else if (currentImageIndex >= currentProductImages.length) {
     currentImageIndex = 0;
   }
-  
   const lightboxImg = document.getElementById("lightboxImage");
   lightboxImg.src = currentProductImages[currentImageIndex];
 }
 
-// Inscription utilisateur
 function registerUser(name, email) {
   const newUser = {
     id: Date.now(),
@@ -191,15 +176,11 @@ function registerUser(name, email) {
   users.push(newUser);
   currentUser = newUser;
   saveData();
-
   document.getElementById("registrationModal").classList.remove("active");
 }
 
-// Affichage des produits (Firestore)
 function renderProducts() {
   const grid = document.getElementById("productsGrid");
-  
-  // Trier les produits par date de création (les plus récents en premier)
   const sortedProducts = [...products].sort((a, b) => 
     new Date(b.createdAt) - new Date(a.createdAt)
   );
@@ -215,12 +196,10 @@ function renderProducts() {
   }
 
   grid.innerHTML = sortedProducts.map(product => {
-    const discount = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
+    const discount = product.originalPrice > 0 ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
     const rating = 4.0 + Math.random() * 1.0;
     const reviews = Math.floor(Math.random() * 1000) + 100;
-    
     const firstImage = product.images[0] || "https://via.placeholder.com/200?text=Image+Manquante";
-    
     return `
       <div class="product-card" data-category="${product.category}">
         <div class="product-image" onclick="openLightbox('${product.id}')">
@@ -247,7 +226,6 @@ function renderProducts() {
   }).join("");
 }
 
-// Filtrage par catégorie
 function filterByCategory(category) {
   document.querySelectorAll(".category-btn").forEach((btn) => {
     btn.classList.remove("active");
@@ -264,7 +242,7 @@ function filterByCategory(category) {
   });
 }
 
-// Gestion du panier
+window.addToCart = addToCart;
 function addToCart(productId) {
   const product = products.find((p) => p.id === productId);
   if (!product) return;
@@ -286,7 +264,6 @@ function addToCart(productId) {
   saveData();
   updateCartUI();
 
-  // Animation d'ajout
   const btn = event.target;
   const originalText = btn.innerHTML;
   btn.innerHTML = '<i class="fas fa-check"></i> Ajouté!';
@@ -297,18 +274,19 @@ function addToCart(productId) {
   }, 1000);
 }
 
+window.removeFromCart = removeFromCart;
 function removeFromCart(productId) {
   cart = cart.filter((item) => item.id !== productId);
   saveData();
   updateCartUI();
 }
 
+window.updateQuantity = updateQuantity;
 function updateQuantity(productId, newQuantity) {
   if (newQuantity <= 0) {
     removeFromCart(productId);
     return;
   }
-
   const item = cart.find((item) => item.id === productId);
   if (item) {
     item.quantity = newQuantity;
@@ -330,41 +308,39 @@ function updateCartUI() {
 
   if (cart.length === 0) {
     cartItems.innerHTML = `
-            <div class="empty-cart">
-                <i class="fas fa-shopping-cart"></i>
-                <p>Votre panier est vide</p>
-            </div>
-        `;
+      <div class="empty-cart">
+        <i class="fas fa-shopping-cart"></i>
+        <p>Votre panier est vide</p>
+      </div>
+    `;
   } else {
     cartItems.innerHTML = cart
       .map(
         (item) => `
-            <div class="cart-item">
-                <img src="${item.image}" alt="${item.name}">
-                <div class="cart-item-info">
-                    <div class="cart-item-name">${item.name}</div>
-                    <div class="cart-item-price">$${item.price.toFixed(2)}</div>
-                    <div class="quantity-controls">
-                        <button class="quantity-btn" onclick="updateQuantity('${item.id}', ${item.quantity - 1})">-</button>
-                        <span>${item.quantity}</span>
-                        <button class="quantity-btn" onclick="updateQuantity('${item.id}', ${item.quantity + 1})">+</button>
-                        <button class="quantity-btn" onclick="removeFromCart('${item.id}')" style="margin-left: 1rem; color: #ef4444;">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
+          <div class="cart-item">
+            <img src="${item.image}" alt="${item.name}">
+            <div class="cart-item-info">
+              <div class="cart-item-name">${item.name}</div>
+              <div class="cart-item-price">$${item.price.toFixed(2)}</div>
+              <div class="quantity-controls">
+                <button class="quantity-btn" onclick="updateQuantity('${item.id}', ${item.quantity - 1})">-</button>
+                <span>${item.quantity}</span>
+                <button class="quantity-btn" onclick="updateQuantity('${item.id}', ${item.quantity + 1})">+</button>
+                <button class="quantity-btn" onclick="removeFromCart('${item.id}')" style="margin-left: 1rem; color: #ef4444;">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
             </div>
+          </div>
         `
       )
       .join("");
   }
 }
 
-// Interface utilisateur
 function toggleCart() {
   const sidebar = document.getElementById("cartSidebar");
   const overlay = document.getElementById("overlay");
-
   sidebar.classList.toggle("active");
   overlay.classList.toggle("active");
 }
@@ -372,7 +348,6 @@ function toggleCart() {
 function toggleAdmin() {
   const panel = document.getElementById("adminPanel");
   const overlay = document.getElementById("overlay");
-
   panel.classList.toggle("active");
   overlay.classList.toggle("active");
 }
@@ -392,7 +367,6 @@ function switchTab(tabName) {
   document.getElementById(`${tabName}Tab`).classList.add("active");
 }
 
-// Fonctionnalités supplémentaires
 function shareWebsite() {
   const url = window.location.href;
   const text = "Découvrez MarcShop - La meilleure boutique en ligne pour tous vos besoins!";
@@ -423,7 +397,6 @@ function checkout() {
     `Commande confirmée!\n${itemCount} article(s) pour un total de $${total.toFixed(2)}\n\nMerci pour votre achat sur MarcShop!`
   );
 
-  // Vider le panier
   cart = [];
   saveData();
   updateCartUI();
