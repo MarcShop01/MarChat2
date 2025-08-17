@@ -8,7 +8,7 @@ import {
   deleteDoc 
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Configuration Firebase (à remplacer par la vôtre)
+// Configuration Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBLUZl0j_gO7aZtT2zwgTISWO5ab9AFfE0",
   authDomain: "marchat-b23f1.firebaseapp.com",
@@ -33,30 +33,51 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Configuration des événements
 function setupEventListeners() {
-  document.getElementById("loginForm").addEventListener("submit", login);
-  document.getElementById("productForm").addEventListener("submit", addProduct);
-}
-
-// Authentification admin
-function checkAdminSession() {
-  const adminSession = localStorage.getItem("marcshop-admin-session");
-  if (adminSession) {
-    showDashboard();
-  } else {
-    showLogin();
+  const loginForm = document.getElementById("loginForm");
+  if (loginForm) {
+    loginForm.addEventListener("submit", login);
+  }
+  
+  const productForm = document.getElementById("productForm");
+  if (productForm) {
+    productForm.addEventListener("submit", addProduct);
   }
 }
 
+// Authentification admin - CORRIGÉ
+function checkAdminSession() {
+  const adminSession = localStorage.getItem("marcshop-admin-session");
+  if (adminSession) {
+    const sessionData = JSON.parse(adminSession);
+    const now = new Date().getTime();
+    
+    // Vérifier si la session est toujours valide (24h)
+    if (now - sessionData.timestamp < 24 * 60 * 60 * 1000) {
+      showDashboard();
+      return;
+    }
+  }
+  showLogin();
+}
+
 function login(e) {
-  e.preventDefault();
-  const password = document.getElementById("adminPassword").value;
+  if (e) e.preventDefault();
+  
+  const passwordInput = document.getElementById("adminPassword");
+  if (!passwordInput) return;
+  
+  const password = passwordInput.value;
 
   if (password === "marcshop2024") {
-    const sessionData = { timestamp: Date.now() };
+    const sessionData = { 
+      timestamp: Date.now(),
+      isAdmin: true
+    };
     localStorage.setItem("marcshop-admin-session", JSON.stringify(sessionData));
     showDashboard();
   } else {
     alert("Mot de passe incorrect!");
+    if (passwordInput) passwordInput.value = "";
   }
 }
 
@@ -67,29 +88,31 @@ function logout() {
 
 // Gestion des produits
 async function addProduct(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
   
   const productData = {
-    name: document.getElementById("productName").value,
-    price: parseFloat(document.getElementById("productPrice").value),
-    originalPrice: parseFloat(document.getElementById("productOriginalPrice").value),
-    category: document.getElementById("productCategory").value,
-    description: document.getElementById("productDescription").value,
+    name: document.getElementById("productName")?.value || "",
+    price: parseFloat(document.getElementById("productPrice")?.value || 0),
+    originalPrice: parseFloat(document.getElementById("productOriginalPrice")?.value || 0),
+    category: document.getElementById("productCategory")?.value || "",
+    description: document.getElementById("productDescription")?.value || "",
     images: [
-      document.getElementById("productImage1").value,
-      document.getElementById("productImage2").value,
-      document.getElementById("productImage3").value,
-      document.getElementById("productImage4").value
+      document.getElementById("productImage1")?.value || "",
+      document.getElementById("productImage2")?.value || "",
+      document.getElementById("productImage3")?.value || "",
+      document.getElementById("productImage4")?.value || ""
     ].filter(url => url.trim() !== ""),
     createdAt: new Date().toISOString(),
     status: "active"
   };
 
   try {
-    // Ajouter à Firebase
     await addDoc(collection(db, "products"), productData);
     alert("Produit ajouté avec succès!");
-    document.getElementById("productForm").reset();
+    
+    const form = document.getElementById("productForm");
+    if (form) form.reset();
+    
     renderProductsList();
   } catch (error) {
     console.error("Erreur d'ajout:", error);
@@ -98,19 +121,22 @@ async function addProduct(e) {
 }
 
 async function deleteProduct(id) {
-  if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
-    try {
-      await deleteDoc(doc(db, "products", id));
-      renderProductsList();
-    } catch (error) {
-      console.error("Erreur de suppression:", error);
-    }
+  if (!confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) return;
+  
+  try {
+    await deleteDoc(doc(db, "products", id));
+    renderProductsList();
+  } catch (error) {
+    console.error("Erreur de suppression:", error);
+    alert("Erreur lors de la suppression du produit");
   }
 }
 
 // Affichage des produits
 async function renderProductsList() {
   const productsList = document.getElementById("productsList");
+  if (!productsList) return;
+  
   productsList.innerHTML = "<p>Chargement des produits...</p>";
 
   try {
@@ -163,25 +189,67 @@ async function renderProductsList() {
 
 // Navigation admin
 function showSection(sectionName) {
+  // Masquer toutes les sections
   document.querySelectorAll(".admin-section").forEach(section => {
     section.classList.remove("active");
   });
-  document.getElementById(`${sectionName}Section`).classList.add("active");
+  
+  // Afficher la section demandée
+  const section = document.getElementById(`${sectionName}Section`);
+  if (section) section.classList.add("active");
+  
+  // Charger les données si nécessaire
   if (sectionName === "products") renderProductsList();
 }
 
 function showLogin() {
-  document.getElementById("adminLogin").style.display = "flex";
-  document.getElementById("adminDashboard").style.display = "none";
+  const loginSection = document.getElementById("adminLogin");
+  const dashboard = document.getElementById("adminDashboard");
+  
+  if (loginSection) loginSection.style.display = "flex";
+  if (dashboard) dashboard.style.display = "none";
 }
 
 function showDashboard() {
-  document.getElementById("adminLogin").style.display = "none";
-  document.getElementById("adminDashboard").style.display = "block";
+  const loginSection = document.getElementById("adminLogin");
+  const dashboard = document.getElementById("adminDashboard");
+  
+  if (loginSection) loginSection.style.display = "none";
+  if (dashboard) dashboard.style.display = "block";
+  
   renderProductsList();
+  updateStats();
+}
+
+// Mettre à jour les statistiques
+async function updateStats() {
+  try {
+    const productsSnapshot = await getDocs(collection(db, "products"));
+    const totalProducts = productsSnapshot.size;
+    
+    document.getElementById("totalProducts") && 
+      (document.getElementById("totalProducts").textContent = totalProducts);
+    
+    // Les utilisateurs sont gérés localement dans cet exemple
+    const users = JSON.parse(localStorage.getItem("marcshop-users") || "[]");
+    const totalUsers = users.length;
+    const activeUsers = users.filter(user => 
+      new Date() - new Date(user.lastActivity) < 24 * 60 * 60 * 1000
+    ).length;
+    
+    document.getElementById("totalUsers") && 
+      (document.getElementById("totalUsers").textContent = totalUsers);
+    
+    document.getElementById("activeUsers") && 
+      (document.getElementById("activeUsers").textContent = activeUsers);
+      
+  } catch (error) {
+    console.error("Erreur de chargement des stats:", error);
+  }
 }
 
 // Exposer les fonctions globales
 window.showSection = showSection;
 window.logout = logout;
 window.deleteProduct = deleteProduct;
+window.login = login;
