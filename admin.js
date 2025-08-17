@@ -31,6 +31,9 @@ document.addEventListener("DOMContentLoaded", () => {
       addProductAdmin();
     });
   }
+  
+  // Initialisation des sections
+  showSection('dashboard');
 });
 
 function showDashboard() {
@@ -61,7 +64,13 @@ function showSection(sectionId) {
   document.getElementById(`${sectionId}Section`).style.display = "block";
   
   // Activer le bouton correspondant
-  document.querySelector(`.sidebar-btn[onclick="showSection('${sectionId}')"]`).classList.add("active");
+  const activeBtn = [...document.querySelectorAll(".sidebar-btn")].find(btn => 
+    btn.getAttribute('onclick').includes(`'${sectionId}'`)
+  );
+  
+  if (activeBtn) {
+    activeBtn.classList.add("active");
+  }
 }
 
 function updateStats() {
