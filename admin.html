@@ -1,62 +1,96 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MarcShop - Administration</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Tu peux ajouter ton style ici ou dans styles.css -->
+  <meta charset="UTF-8">
+  <title>MarcShop Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <!-- Connexion admin -->
-    <div id="adminLogin" style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
-        <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); max-width: 400px;">
-            <h2 style="text-align: center; color: #10b981;">Administration MarcShop</h2>
-            <form id="loginForm">
-                <div>
-                    <label for="adminPassword">Mot de passe administrateur</label>
-                    <input type="password" id="adminPassword" placeholder="Entrez le mot de passe" required style="width: 100%;">
-                </div>
-                <button type="submit" style="background: #10b981; color: white; width: 100%; margin-top: 1rem;">Se connecter</button>
-            </form>
-        </div>
-    </div>
+  <div id="adminLogin" class="admin-login">
+    <form id="loginForm" class="login-form">
+      <h2>Connexion Admin</h2>
+      <div class="form-group">
+        <label for="adminPassword">Mot de passe</label>
+        <input type="password" id="adminPassword" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Se connecter</button>
+    </form>
+  </div>
 
-    <!-- Dashboard admin -->
-    <div id="adminDashboard" style="display: none;">
-        <div style="background: #10b981; color: white; padding: 1rem;">
-            <h1>Administration MarcShop</h1>
-            <button id="logoutBtn" style="background: #059669; color: white; float: right;">Déconnexion</button>
-        </div>
-        <div style="padding: 2rem;">
-            <h2>Ajouter un produit</h2>
-            <form id="productForm">
-                <input type="text" id="productName" placeholder="Nom du produit *" required>
-                <select id="productCategory" required>
-                    <option value="">Catégorie *</option>
-                    <option value="electronics">Électronique</option>
-                    <option value="clothing">Vêtements</option>
-                    <option value="home">Maison</option>
-                    <option value="beauty">Beauté</option>
-                    <option value="sports">Sports</option>
-                </select>
-                <input type="number" id="productPrice" step="0.01" placeholder="Prix *" required>
-                <input type="number" id="productOriginalPrice" step="0.01" placeholder="Prix original *" required>
-                <textarea id="productDescription" placeholder="Description"></textarea>
-                <input type="url" id="productImage1" placeholder="Image 1 (URL) *" required>
-                <input type="url" id="productImage2" placeholder="Image 2 (URL)">
-                <input type="url" id="productImage3" placeholder="Image 3 (URL)">
-                <input type="url" id="productImage4" placeholder="Image 4 (URL)">
-                <button type="submit" style="background: #10b981; color: white; margin-top: 1rem;">Ajouter le produit</button>
-            </form>
-            <hr>
-            <h2>Liste des produits</h2>
-            <div id="productsList"></div>
-        </div>
+  <div id="adminDashboard" class="admin-dashboard" style="display:none;">
+    <div class="admin-header">
+      <div>
+        <span style="font-size:1.3em;"><i class="fas fa-user-shield"></i> Administration MarcShop</span>
+      </div>
+      <button id="logoutBtn" class="btn btn-danger"><i class="fas fa-sign-out-alt"></i> Déconnexion</button>
     </div>
-
-    <!-- Script admin -->
-    <script type="module" src="admin.js"></script>
+    <div class="admin-content">
+      <aside class="admin-sidebar">
+        <button class="sidebar-btn active" data-section="dashboard"><i class="fas fa-chart-bar"></i> Tableau de bord</button>
+        <button class="sidebar-btn" data-section="products"><i class="fas fa-box"></i> Produits</button>
+        <button class="sidebar-btn" data-section="users"><i class="fas fa-users"></i> Utilisateurs</button>
+        <button class="sidebar-btn" data-section="orders"><i class="fas fa-shopping-cart"></i> Commandes</button>
+      </aside>
+      <main class="admin-main">
+        <!-- Tableau de bord -->
+        <section id="dashboardSection" class="admin-section active">
+          <h2>Tableau de bord</h2>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <h3>Produits</h3>
+              <p id="totalProducts" class="stat-value">0</p>
+            </div>
+            <div class="stat-card">
+              <h3>Utilisateurs</h3>
+              <p id="totalUsers" class="stat-value">0</p>
+            </div>
+            <div class="stat-card">
+              <h3>Commandes</h3>
+              <p id="totalOrders" class="stat-value">0</p>
+            </div>
+          </div>
+        </section>
+        <!-- Produits -->
+        <section id="productsSection" class="admin-section">
+          <h2>Gestion des produits</h2>
+          <form id="productForm" class="add-product-form">
+            <input type="text" id="productName" placeholder="Nom du produit *" required>
+            <select id="productCategory" required>
+              <option value="">Catégorie *</option>
+              <option value="electronics">Électronique</option>
+              <option value="clothing">Vêtements</option>
+              <option value="home">Maison</option>
+              <option value="beauty">Beauté</option>
+              <option value="sports">Sports</option>
+            </select>
+            <input type="number" id="productPrice" step="0.01" placeholder="Prix *" required>
+            <input type="number" id="productOriginalPrice" step="0.01" placeholder="Prix original *" required>
+            <textarea id="productDescription" placeholder="Description"></textarea>
+            <input type="url" id="productImage1" placeholder="Image 1 (URL) *" required>
+            <input type="url" id="productImage2" placeholder="Image 2 (URL)">
+            <input type="url" id="productImage3" placeholder="Image 3 (URL)">
+            <input type="url" id="productImage4" placeholder="Image 4 (URL)">
+            <button type="submit" class="btn btn-primary">Ajouter le produit</button>
+          </form>
+          <div id="productsList"></div>
+        </section>
+        <!-- Utilisateurs -->
+        <section id="usersSection" class="admin-section">
+          <h2>Utilisateurs du site</h2>
+          <div id="usersList"></div>
+        </section>
+        <!-- Commandes -->
+        <section id="ordersSection" class="admin-section">
+          <h2>Commandes</h2>
+          <div id="ordersList">
+            <p>Aucune commande à afficher pour le moment.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script type="module" src="admin.js"></script>
 </body>
 </html>
