@@ -1,16 +1,16 @@
-// Ajoute ce qui suit en haut du fichier (remplace les valeurs par celles de ton projet Firebase)
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-// CONFIG FIREBASE
+// Nouvelle configuration Firebase
 const firebaseConfig = {
-  apiKey: "TON_API_KEY",
-  authDomain: "TON_AUTH_DOMAIN",
-  projectId: "TON_PROJECT_ID",
-  storageBucket: "TON_STORAGE_BUCKET",
-  messagingSenderId: "TON_MESSAGING_SENDER_ID",
-  appId: "TON_APP_ID"
+  apiKey: "AIzaSyC6_3mPjss7EWXNOLzUxPK8oxl0JXRLSjk",
+  authDomain: "marcshop1-e3912.firebaseapp.com",
+  projectId: "marcshop1-e3912",
+  storageBucket: "marcshop1-e3912.firebasestorage.app",
+  messagingSenderId: "725339297541",
+  appId: "1:725339297541:web:7f574d6ca7a390d4a9c96c"
 };
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   listenProducts();
 });
 
-// Gestion des produits via Firestore
+// Gestion des produits Firestore
 function listenProducts() {
   const productsCol = collection(db, "products");
   onSnapshot(productsCol, (snapshot) => {
@@ -57,6 +57,11 @@ async function addProduct() {
     document.getElementById("productImage4").value,
   ].filter((img) => img.trim() !== "");
 
+  if (!name || isNaN(price) || isNaN(originalPrice) || !category || images.length === 0) {
+    alert("Veuillez remplir tous les champs obligatoires (*) et fournir au moins 1 image.");
+    return;
+  }
+
   const newProduct = {
     name: name,
     price: price,
@@ -72,9 +77,9 @@ async function addProduct() {
   try {
     await addDoc(collection(db, "products"), newProduct);
     document.getElementById("productForm").reset();
-    alert("Produit ajouté avec succès!");
+    alert("Produit ajouté avec succès !");
   } catch (e) {
-    alert("Erreur lors de l'ajout du produit: " + e.message);
+    alert("Erreur lors de l'ajout du produit : " + e.message);
   }
 }
 
@@ -89,7 +94,7 @@ async function deleteProduct(id) {
   }
 }
 
-// Affichage des produits (Firestore)
+// Affichage des produits Firestore
 function renderProductsList() {
   const productsList = document.getElementById("productsList");
 
@@ -212,7 +217,7 @@ function showSection(sectionName) {
   if (sectionName === "users") renderUsersList();
 }
 
-// Gestion des utilisateurs (reste inchangé, tu peux l'améliorer pour Firestore plus tard)
+// Gestion des utilisateurs (toujours en local, à adapter si tu veux Firestore plus tard)
 function renderUsersList() {
   const usersList = document.getElementById("usersList");
 
