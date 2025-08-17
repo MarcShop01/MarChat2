@@ -1,76 +1,69 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { 
-  getFirestore, 
-  collection, 
-  getDocs 
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-// Configuration Firebase (identique à celle de admin.js)
+// Configuration Firebase
 const firebaseConfig = {
-  apiKey: "VOTRE_API_KEY",
-  authDomain: "VOTRE_AUTH_DOMAIN",
-  projectId: "VOTRE_PROJECT_ID",
-  storageBucket: "VOTRE_STORAGE_BUCKET",
-  messagingSenderId: "VOTRE_SENDER_ID",
-  appId: "VOTRE_APP_ID"
+  apiKey: "AIzaSyBLUZl0j_gO7aZtT2zwgTISWO5ab9AFfE0",
+  authDomain: "marchat-b23f1.firebaseapp.com",
+  projectId: "marchat-b23f1",
+  storageBucket: "marchat-b23f1.firebasestorage.app",
+  messagingSenderId: "264746644024",
+  appId: "1:264746644024:web:d575bac7eb65c3d3062ccd",
+  measurementId: "G-Y9Q0XWH80H"
 };
 
-// Initialiser Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Initialisation Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const productsRef = db.collection("products");
+const usersRef = db.collection("users");
 
 // État global de l'application
 let currentUser = null;
-let products = []; // Les produits chargés depuis Firebase
+let products = [];
 let cart = [];
 let users = [];
 let currentProductImages = [];
 let currentImageIndex = 0;
 
-// Charger les produits depuis Firebase
-async function loadProducts() {
-  try {
-    const querySnapshot = await getDocs(collection(db, "products"));
-    const loadedProducts = [];
-    
-    querySnapshot.forEach(doc => {
-      loadedProducts.push({ id: doc.id, ...doc.data() });
-    });
-    
-    // Trier par date de création (récent en premier)
-    loadedProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    
-    return loadedProducts;
-  } catch (error) {
-    console.error("Erreur de chargement:", error);
-    return [];
-  }
-}
-
 // Initialisation
 document.addEventListener("DOMContentLoaded", async () => {
-  // Charger les produits depuis Firebase
-  products = await loadProducts();
-  
-  // Charger les données locales
-  cart = JSON.parse(localStorage.getItem("marcshop-cart")) || [];
-  users = JSON.parse(localStorage.getItem("marcshop-users")) || [];
-  currentUser = JSON.parse(localStorage.getItem("marcshop-current-user"));
-  
+  await loadData();
   checkUserRegistration();
   setupEventListeners();
   renderProducts();
   updateCartUI();
   setupLightbox();
+  setupAdminListeners();
 });
 
-// Gestion des données localStorage
-function saveData() {
-  localStorage.setItem("marcshop-cart", JSON.stringify(cart));
-  localStorage.setItem("marcshop-users", JSON.stringify(users));
-  if (currentUser) {
-    localStorage.setItem("marcshop-current-user", JSON.stringify(currentUser));
+// Chargement des données depuis Firebase
+async function loadData() {
+  try {
+    // Charger les produits depuis Firestore
+    const productsSnapshot = await productsRef.get();
+    products = productsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt || new Date().toISOString()
+      };
+    });
+    
+    // Charger le panier depuis localStorage
+    cart = JSON.parse(localStorage.getItem("marcshop-cart")) || [];
+    
+    // Charger l'utilisateur courant depuis localStorage
+    currentUser = JSON.parse(localStorage.getItem("marcshop-current-user"));
+    
+  } catch (e) {
+    console.error("Erreur de chargement des données:", e);
+    products = [];
+    cart = [];
   }
+}
+
+// Sauvegarde du panier dans localStorage
+function saveCart() {
+  localStorage.setItem("marcshop-cart", JSON.stringify(cart));
 }
 
 // Vérification inscription utilisateur
@@ -124,6 +117,22 @@ function setupLightbox() {
   });
 }
 
+// Configuration des écouteurs admin
+function setupAdminListeners() {
+  // Bouton d'administration
+  const adminBtn = document.querySelector(".admin-btn");
+  if (adminBtn) {
+    adminBtn.addEventListener("click", toggleAdmin);
+  }
+  
+  // Tabs admin
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", function() {
+      switchTab(this.dataset.tab);
+    });
+  });
+}
+
 // Fonctions pour la lightbox
 function openLightbox(productId, imgIndex = 0) {
   const product = products.find(p => p.id === productId);
@@ -156,10 +165,9 @@ function changeImage(direction) {
   lightboxImg.src = currentProductImages[currentImageIndex];
 }
 
-// Inscription utilisateur
-function registerUser(name, email) {
+// Inscription utilisateur avec Firebase
+async function registerUser(name, email) {
   const newUser = {
-    id: Date.now(),
     name: name,
     email: email,
     registeredAt: new Date().toISOString(),
@@ -167,18 +175,33 @@ function registerUser(name, email) {
     lastActivity: new Date().toISOString(),
   };
 
-  users.push(newUser);
-  currentUser = newUser;
-  saveData();
-
-  document.getElementById("registrationModal").classList.remove("active");
+  try {
+    // Ajouter l'utilisateur à Firestore
+    const docRef = await usersRef.add(newUser);
+    
+    // Mettre à jour l'utilisateur courant
+    currentUser = {
+      id: docRef.id,
+      ...newUser
+    };
+    
+    localStorage.setItem("marcshop-current-user", JSON.stringify(currentUser));
+    document.getElementById("registrationModal").classList.remove("active");
+  } catch (error) {
+    console.error("Erreur lors de l'ajout de l'utilisateur: ", error);
+  }
 }
 
 // Affichage des produits
 function renderProducts() {
   const grid = document.getElementById("productsGrid");
   
-  if (products.length === 0) {
+  // Trier les produits par date de création (les plus récents en premier)
+  const sortedProducts = [...products].sort((a, b) => 
+    new Date(b.createdAt) - new Date(a.createdAt)
+  );
+
+  if (sortedProducts.length === 0) {
     grid.innerHTML = `
       <div class="no-products">
         <h3>Aucun produit disponible</h3>
@@ -188,7 +211,7 @@ function renderProducts() {
     return;
   }
 
-  grid.innerHTML = products.map(product => {
+  grid.innerHTML = sortedProducts.map(product => {
     const discount = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
     const rating = 4.0 + Math.random() * 1.0;
     const reviews = Math.floor(Math.random() * 1000) + 100;
@@ -257,7 +280,7 @@ function addToCart(productId) {
     });
   }
 
-  saveData();
+  saveCart();
   updateCartUI();
 
   // Animation d'ajout
@@ -273,7 +296,7 @@ function addToCart(productId) {
 
 function removeFromCart(productId) {
   cart = cart.filter((item) => item.id !== productId);
-  saveData();
+  saveCart();
   updateCartUI();
 }
 
@@ -286,7 +309,7 @@ function updateQuantity(productId, newQuantity) {
   const item = cart.find((item) => item.id === productId);
   if (item) {
     item.quantity = newQuantity;
-    saveData();
+    saveCart();
     updateCartUI();
   }
 }
@@ -399,22 +422,7 @@ function checkout() {
 
   // Vider le panier
   cart = [];
-  saveData();
+  saveCart();
   updateCartUI();
   closeAllPanels();
 }
-
-// Exposer les fonctions globales
-window.openLightbox = openLightbox;
-window.closeLightbox = closeLightbox;
-window.changeImage = changeImage;
-window.addToCart = addToCart;
-window.updateQuantity = updateQuantity;
-window.removeFromCart = removeFromCart;
-window.toggleCart = toggleCart;
-window.toggleAdmin = toggleAdmin;
-window.closeAllPanels = closeAllPanels;
-window.switchTab = switchTab;
-window.shareWebsite = shareWebsite;
-window.checkout = checkout;
-window.filterByCategory = filterByCategory;
