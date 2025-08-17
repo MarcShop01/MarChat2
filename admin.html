@@ -4,95 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MarcShop - Administration</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .admin-login {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-        .login-form {
-            background: white;
-            padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-        }
-        .admin-dashboard {
-            display: none;
-            padding: 2rem;
-        }
-        .admin-header {
-            background: #10b981;
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .admin-content {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-        .admin-sidebar {
-            background: #f9fafb;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            height: fit-content;
-        }
-        .admin-main {
-            background: white;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-        .sidebar-btn {
-            display: block;
-            width: 100%;
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
-            background: none;
-            border: none;
-            text-align: left;
-            border-radius: 0.375rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .sidebar-btn:hover, .sidebar-btn.active {
-            background: #10b981;
-            color: white;
-        }
-        .admin-section {
-            display: none;
-        }
-        .admin-section.active {
-            display: block;
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        .stat-card {
-            background: #f0fdf4;
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            border-left: 4px solid #10b981;
-        }
-    </style>
 </head>
 <body>
     <!-- Formulaire de connexion admin -->
     <div id="adminLogin" class="admin-login">
         <div class="login-form">
-            <h2 style="text-align: center; margin-bottom: 2rem; color: #10b981;">
+            <h2>
                 <i class="fas fa-shield-alt"></i> Administration MarcShop
             </h2>
             <form id="loginForm">
@@ -100,11 +19,11 @@
                     <label for="adminPassword">Mot de passe administrateur</label>
                     <input type="password" id="adminPassword" placeholder="Entrez le mot de passe" required>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                <button type="submit" class="btn">
                     <i class="fas fa-sign-in-alt"></i> Se connecter
                 </button>
             </form>
-            <p style="text-align: center; margin-top: 1rem; color: #6b7280; font-size: 0.875rem;">
+            <p>
                 Accès réservé aux administrateurs uniquement
             </p>
         </div>
@@ -114,7 +33,7 @@
     <div id="adminDashboard" class="admin-dashboard">
         <div class="admin-header">
             <h1><i class="fas fa-tachometer-alt"></i> Administration MarcShop</h1>
-            <button onclick="logout()" class="btn" style="background: rgba(255,255,255,0.2);">
+            <button onclick="logout()" class="btn">
                 <i class="fas fa-sign-out-alt"></i> Déconnexion
             </button>
         </div>
@@ -142,15 +61,15 @@
                     <div class="stats-grid">
                         <div class="stat-card">
                             <h3>Produits</h3>
-                            <p style="font-size: 2rem; font-weight: bold; color: #10b981;" id="totalProducts">0</p>
+                            <p id="totalProducts">0</p>
                         </div>
                         <div class="stat-card">
                             <h3>Utilisateurs</h3>
-                            <p style="font-size: 2rem; font-weight: bold; color: #10b981;" id="totalUsers">0</p>
+                            <p id="totalUsers">0</p>
                         </div>
                         <div class="stat-card">
                             <h3>Utilisateurs actifs</h3>
-                            <p style="font-size: 2rem; font-weight: bold; color: #10b981;" id="activeUsers">0</p>
+                            <p id="activeUsers">0</p>
                         </div>
                     </div>
                 </div>
@@ -159,10 +78,10 @@
                 <div id="productsSection" class="admin-section">
                     <h2>Gestion des produits</h2>
                     
-                    <div style="background: #f9fafb; padding: 2rem; border-radius: 0.5rem; margin-bottom: 2rem;">
+                    <div class="add-product-form">
                         <h3>Ajouter un nouveau produit</h3>
                         <form id="productForm">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label for="productName">Nom du produit</label>
                                     <input type="text" id="productName" required>
@@ -179,7 +98,7 @@
                                 </div>
                             </div>
                             
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label for="productPrice">Prix ($)</label>
                                     <input type="number" id="productPrice" step="0.01" required>
@@ -195,7 +114,7 @@
                                 <textarea id="productDescription" rows="3"></textarea>
                             </div>
 
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label for="productImage1">Image 1 (URL)</label>
                                     <input type="url" id="productImage1" placeholder="https://marcshop.com/image1.jpg">
@@ -206,7 +125,7 @@
                                 </div>
                             </div>
 
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label for="productImage3">Image 3 (URL)</label>
                                     <input type="url" id="productImage3" placeholder="https://marcshop.com/image3.jpg">
@@ -217,7 +136,7 @@
                                 </div>
                             </div>
 
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn">
                                 <i class="fas fa-plus"></i> Ajouter le produit
                             </button>
                         </form>
