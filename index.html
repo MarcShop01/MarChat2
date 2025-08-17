@@ -8,27 +8,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <!-- Firebase SDK -->
-    <script type="module" src="admin.js"></script>
-    <script type="module" src="script.js"></script>
-    
-    <style>
-        .admin-login {
-            display: none; /* Caché par défaut */
-            justify-content: center;
-            align-items: center;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 1000;
-        }
-        .admin-dashboard {
-            display: none; /* Caché par défaut */
-        }
-    </style>
+    <!-- Ajout des SDK Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <!-- Modal d'inscription -->
@@ -203,156 +185,25 @@
         <img class="lightbox-content" id="lightboxImage">
     </div>
 
-    <!-- Connexion Admin -->
-    <div id="adminLogin" class="admin-login">
-        <div class="login-form">
-            <h2 style="text-align: center; margin-bottom: 2rem; color: #10b981;">
-                <i class="fas fa-shield-alt"></i> Administration MarcShop
-            </h2>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="adminPassword">Mot de passe administrateur</label>
-                    <input type="password" id="adminPassword" placeholder="Entrez le mot de passe" required>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">
-                    <i class="fas fa-sign-in-alt"></i> Se connecter
-                </button>
-            </form>
-            <p style="text-align: center; margin-top: 1rem; color: #6b7280; font-size: 0.875rem;">
-                Accès réservé aux administrateurs uniquement
-            </p>
-        </div>
-    </div>
+    <!-- Initialisation Firebase -->
+    <script>
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBLUZl0j_gO7aZtT2zwgTISWO5ab9AFfE0",
+            authDomain: "marchat-b23f1.firebaseapp.com",
+            projectId: "marchat-b23f1",
+            storageBucket: "marchat-b23f1.firebasestorage.app",
+            messagingSenderId: "264746644024",
+            appId: "1:264746644024:web:d575bac7eb65c3d3062ccd",
+            measurementId: "G-Y9Q0XWH80H"
+        };
 
-    <!-- Dashboard Admin -->
-    <div id="adminDashboard" class="admin-dashboard">
-        <div class="admin-header">
-            <h1><i class="fas fa-tachometer-alt"></i> Administration MarcShop</h1>
-            <button onclick="logout()" class="btn" style="background: rgba(255,255,255,0.2);">
-                <i class="fas fa-sign-out-alt"></i> Déconnexion
-            </button>
-        </div>
-
-        <div class="admin-content">
-            <div class="admin-sidebar">
-                <button class="sidebar-btn active" onclick="showSection('dashboard')">
-                    <i class="fas fa-chart-bar"></i> Tableau de bord
-                </button>
-                <button class="sidebar-btn" onclick="showSection('products')">
-                    <i class="fas fa-box"></i> Gestion des produits
-                </button>
-                <button class="sidebar-btn" onclick="showSection('users')">
-                    <i class="fas fa-users"></i> Utilisateurs
-                </button>
-                <button class="sidebar-btn" onclick="showSection('orders')">
-                    <i class="fas fa-shopping-cart"></i> Commandes
-                </button>
-            </div>
-
-            <div class="admin-main">
-                <!-- Tableau de bord -->
-                <div id="dashboardSection" class="admin-section active">
-                    <h2>Tableau de bord</h2>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <h3>Produits</h3>
-                            <p style="font-size: 2rem; font-weight: bold; color: #10b981;" id="totalProducts">0</p>
-                        </div>
-                        <div class="stat-card">
-                            <h3>Utilisateurs</h3>
-                            <p style="font-size: 2rem; font-weight: bold; color: #10b981;" id="totalUsers">0</p>
-                        </div>
-                        <div class="stat-card">
-                            <h3>Utilisateurs actifs</h3>
-                            <p style="font-size: 2rem; font-weight: bold; color: #10b981;" id="activeUsers">0</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Gestion des produits -->
-                <div id="productsSection" class="admin-section">
-                    <h2>Gestion des produits</h2>
-                    
-                    <div style="background: #f9fafb; padding: 2rem; border-radius: 0.5rem; margin-bottom: 2rem;">
-                        <h3>Ajouter un nouveau produit</h3>
-                        <form id="productForm">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                                <div class="form-group">
-                                    <label for="productName">Nom du produit</label>
-                                    <input type="text" id="productName" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="productCategory">Catégorie</label>
-                                    <select id="productCategory" required>
-                                        <option value="electronics">Électronique</option>
-                                        <option value="clothing">Vêtements</option>
-                                        <option value="home">Maison</option>
-                                        <option value="beauty">Beauté</option>
-                                        <option value="sports">Sports</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                                <div class="form-group">
-                                    <label for="productPrice">Prix ($)</label>
-                                    <input type="number" id="productPrice" step="0.01" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="productOriginalPrice">Prix original ($)</label>
-                                    <input type="number" id="productOriginalPrice" step="0.01" required>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="productDescription">Description</label>
-                                <textarea id="productDescription" rows="3"></textarea>
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                                <div class="form-group">
-                                    <label for="productImage1">Image 1 (URL)</label>
-                                    <input type="url" id="productImage1" placeholder="https://marcshop.com/image1.jpg" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="productImage2">Image 2 (URL)</label>
-                                    <input type="url" id="productImage2" placeholder="https://marcshop.com/image2.jpg">
-                                </div>
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                                <div class="form-group">
-                                    <label for="productImage3">Image 3 (URL)</label>
-                                    <input type="url" id="productImage3" placeholder="https://marcshop.com/image3.jpg">
-                                </div>
-                                <div class="form-group">
-                                    <label for="productImage4">Image 4 (URL)</label>
-                                    <input type="url" id="productImage4" placeholder="https://marcshop.com/image4.jpg">
-                                </div>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-plus"></i> Ajouter le produit
-                            </button>
-                        </form>
-                    </div>
-
-                    <div id="productsList"></div>
-                </div>
-
-                <!-- Gestion des utilisateurs -->
-                <div id="usersSection" class="admin-section">
-                    <h2>Gestion des utilisateurs</h2>
-                    <div id="usersList"></div>
-                </div>
-
-                <!-- Gestion des commandes -->
-                <div id="ordersSection" class="admin-section">
-                    <h2>Gestion des commandes</h2>
-                    <p>Fonctionnalité en développement...</p>
-                </div>
-            </div>
-        </div>
-    </div>
+        // Initialiser Firebase
+        firebase.initializeApp(firebaseConfig);
+    </script>
+    
+    <!-- Scripts d'application -->
+    <script src="admin.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
