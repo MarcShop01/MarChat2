@@ -116,23 +116,28 @@ function setupLightbox() {
   });
 }
 
-// Configuration des écouteurs admin
+// Désactivation du formulaire d'ajout de produit sur la page d'accueil
 function setupAdminListeners() {
   // Formulaire d'ajout de produit
   const productForm = document.getElementById("productForm");
   if (productForm) {
     productForm.addEventListener("submit", function(e) {
       e.preventDefault();
-      alert("Les produits doivent être ajoutés via le panneau d'administration !");
+      alert("L'ajout de produit est réservé à l'administrateur via la page admin.");
     });
+    // Désactiver le bouton
+    const submitBtn = productForm.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.style.background = "#ccc";
+      submitBtn.title = "Ajout réservé à l'admin";
+    }
   }
-  
   // Bouton d'administration
   const adminBtn = document.querySelector(".admin-btn");
   if (adminBtn) {
     adminBtn.addEventListener("click", toggleAdmin);
   }
-  
   // Tabs admin
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", function() {
