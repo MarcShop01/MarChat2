@@ -1,13 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  getDocs, 
-  doc, 
-  deleteDoc 
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
 // Configuration Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBLUZl0j_gO7aZtT2zwgTISWO5ab9AFfE0",
@@ -15,15 +5,18 @@ const firebaseConfig = {
   projectId: "marchat-b23f1",
   storageBucket: "marchat-b23f1.firebasestorage.app",
   messagingSenderId: "264746644024",
-  appId: "1:264746644024:web:d575bac7eb65c3d3062ccd"
+  appId: "1:264746644024:web:d575bac7eb65c3d3062ccd",
+  measurementId: "G-Y9Q0XWH80H"
 };
 
-// Initialiser Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Initialisation Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 // Configuration admin
 const ADMIN_PASSWORD = "marcshop2024";
+const productsRef = db.collection("products");
+const usersRef = db.collection("users");
 
 // État global
 let products = [];
@@ -37,25 +30,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   checkAdminSession();
 });
 
-// Gestion des données
+// Gestion des données Firebase
 async function loadData() {
   try {
-    // Charger les produits depuis Firebase
-    const querySnapshot = await getDocs(collection(db, "products"));
-    products = [];
-    querySnapshot.forEach(doc => {
-      products.push({ id: doc.id, ...doc.data() });
+    // Charger les produits depuis Firestore
+    const productsSnapshot = await productsRef.get();
+    products = productsSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt || new Date().toISOString()
+      };
     });
     
-    // Charger les utilisateurs depuis localStorage
-    users = JSON.parse(localStorage.getItem("marcshop-users")) || [];
-    
-    // Correction pour les anciens produits sans createdAt
-    products = products.map(p => {
-      if (!p.createdAt) {
-        p.createdAt = new Date().toISOString();
-      }
-      return p;
+    // Charger les utilisateurs depuis Firestore
+    const usersSnapshot = await usersRef.get();
+    users = usersSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data
+      };
     });
     
   } catch (e) {
@@ -175,42 +171,46 @@ async function addProduct() {
   };
 
   try {
-    // Ajouter à Firebase
-    await addDoc(collection(db, "products"), newProduct);
-    alert("Produit ajouté avec succès!");
+    // Ajouter le produit à Firestore
+    const docRef = await productsRef.add(newProduct);
     
-    // Recharger les données
-    await loadData();
+    // Mettre à jour la liste locale avec le nouvel ID
+    products.push({
+      id: docRef.id,
+      ...newProduct
+    });
+    
     renderProductsList();
     updateStats();
     document.getElementById("productForm").reset();
+    alert("Produit ajouté avec succès!");
   } catch (error) {
-    console.error("Erreur lors de l'ajout du produit:", error);
+    console.error("Erreur lors de l'ajout du produit: ", error);
     alert("Erreur lors de l'ajout du produit");
   }
 }
 
 async function deleteProduct(id) {
-  if (!confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) return;
-  
-  try {
-    // Supprimer de Firebase
-    await deleteDoc(doc(db, "products", id));
-    
-    // Recharger les données
-    await loadData();
-    renderProductsList();
-    updateStats();
-  } catch (error) {
-    console.error("Erreur lors de la suppression du produit:", error);
-    alert("Erreur lors de la suppression du produit");
+  if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
+    try {
+      // Supprimer le produit de Firestore
+      await productsRef.doc(id).delete();
+      
+      // Mettre à jour la liste locale
+      products = products.filter((p) => p.id !== id);
+      
+      renderProductsList();
+      updateStats();
+    } catch (error) {
+      console.error("Erreur lors de la suppression du produit: ", error);
+      alert("Erreur lors de la suppression du produit");
+    }
   }
 }
 
 // Affichage des produits
 function renderProductsList() {
   const productsList = document.getElementById("productsList");
-  if (!productsList) return;
 
   if (products.length === 0) {
     productsList.innerHTML = "<p>Aucun produit ajouté.</p>";
@@ -252,7 +252,6 @@ function renderProductsList() {
 // Gestion des utilisateurs
 function renderUsersList() {
   const usersList = document.getElementById("usersList");
-  if (!usersList) return;
 
   if (users.length === 0) {
     usersList.innerHTML = "<p>Aucun utilisateur inscrit.</p>";
@@ -286,8 +285,6 @@ function renderUsersList() {
 }
 
 function isUserActive(user) {
-  if (!user.lastActivity) return false;
-  
   const lastActivity = new Date(user.lastActivity);
   const now = new Date();
   const diffHours = (now - lastActivity) / (1000 * 60 * 60);
@@ -300,17 +297,7 @@ function updateStats() {
   const totalUsers = users.length;
   const activeUsers = users.filter((user) => isUserActive(user)).length;
 
-  document.getElementById("totalProducts") && 
-    (document.getElementById("totalProducts").textContent = totalProducts);
-  
-  document.getElementById("totalUsers") && 
-    (document.getElementById("totalUsers").textContent = totalUsers);
-  
-  document.getElementById("activeUsers") && 
-    (document.getElementById("activeUsers").textContent = activeUsers);
+  document.getElementById("totalProducts").textContent = totalProducts;
+  document.getElementById("totalUsers").textContent = totalUsers;
+  document.getElementById("activeUsers").textContent = activeUsers;
 }
-
-// Exposer les fonctions globales
-window.showSection = showSection;
-window.logout = logout;
-window.deleteProduct = deleteProduct;
