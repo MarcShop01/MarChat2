@@ -1,30 +1,17 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyC_krW6QcyTS6JZNJf-_7YAc_491mCWYaQ",
-  authDomain: "marchat-e4d21.firebaseapp.com",
-  projectId: "marchat-e4d21",
-  storageBucket: "marchat-e4d21.appspot.com",
-  messagingSenderId: "211043298263",
-  appId: "1:211043298263:web:dcf751d299aa4360d83992",
-  measurementId: "G-CZHXLDZTBW"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = window.firebaseDB; // défini dans admin.html
 
 const ADMIN_PASSWORD = "marcshop2024";
 let products = [];
 let users = [];
-let orders = []; // Ajoute ici si tu utilises une collection "orders"
+let isLoggedIn = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   checkAdminSession();
   listenProducts();
   listenUsers();
-  listenOrders();
 });
 
 function listenProducts() {
@@ -41,16 +28,18 @@ function listenUsers() {
     updateStats();
   });
 }
-function listenOrders() {
-  // Si tu utilises une collection "orders" dans Firestore
-  onSnapshot(collection(db, "orders"), (snapshot) => {
-    orders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-    renderOrdersList();
-    updateStats();
+
+function setupEventListeners() {
+  document.getElementById("loginForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    login();
+  });
+  document.getElementById("productForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    addProduct();
   });
 }
 
-// Authentification
 function checkAdminSession() {
   const adminSession = localStorage.getItem("marcshop-admin-session");
   if (adminSession) {
@@ -63,6 +52,7 @@ function checkAdminSession() {
   }
   showLogin();
 }
+
 function login() {
   const password = document.getElementById("adminPassword").value;
   if (password === ADMIN_PASSWORD) {
@@ -72,7 +62,7 @@ function login() {
     }));
     showDashboard();
   } else {
-    alert("Mot de passe incorrect !");
+    alert("Mot de passe incorrect!");
     document.getElementById("adminPassword").value = "";
   }
 }
@@ -83,39 +73,30 @@ function logout() {
 function showLogin() {
   document.getElementById("adminLogin").style.display = "flex";
   document.getElementById("adminDashboard").style.display = "none";
+  isLoggedIn = false;
 }
 function showDashboard() {
   document.getElementById("adminLogin").style.display = "none";
   document.getElementById("adminDashboard").style.display = "block";
+  isLoggedIn = true;
+  updateStats();
+  renderProductsList();
+  renderUsersList();
 }
-// Navigation
-function setupEventListeners() {
-  document.getElementById("loginForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    login();
-  });
-  document.getElementById("logoutBtn").addEventListener("click", logout);
-
-  document.querySelectorAll(".sidebar-btn").forEach(btn => {
-    btn.addEventListener("click", function() {
-      document.querySelectorAll(".sidebar-btn").forEach(b => b.classList.remove("active"));
-      document.querySelectorAll(".admin-section").forEach(s => s.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById(btn.dataset.section + "Section").classList.add("active");
-    });
-  });
-
-  document.getElementById("productForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    addProduct();
-  });
+window.showSection = function(sectionName) {
+  document.querySelectorAll(".sidebar-btn").forEach((btn) => btn.classList.remove("active"));
+  document.querySelectorAll(".admin-section").forEach((section) => section.classList.remove("active"));
+  event.target.classList.add("active");
+  document.getElementById(sectionName + "Section").classList.add("active");
+  if (sectionName === "dashboard") updateStats();
+  if (sectionName === "products") renderProductsList();
+  if (sectionName === "users") renderUsersList();
 }
 
-// Ajout produit
 async function addProduct() {
-  const name = document.getElementById("productName").value.trim();
-  const price = parseFloat(document.getElementById("productPrice").value);
-  const originalPrice = parseFloat(document.getElementById("productOriginalPrice").value);
+  const name = document.getElementById("productName").value;
+  const price = Number.parseFloat(document.getElementById("productPrice").value);
+  const originalPrice = Number.parseFloat(document.getElementById("productOriginalPrice").value);
   const category = document.getElementById("productCategory").value;
   const description = document.getElementById("productDescription").value;
   const images = [
@@ -123,66 +104,68 @@ async function addProduct() {
     document.getElementById("productImage2").value,
     document.getElementById("productImage3").value,
     document.getElementById("productImage4").value,
-  ].filter(img => img.trim() !== "");
-
-  if (!name || isNaN(price) || isNaN(originalPrice) || !category || images.length === 0) {
-    alert("Tous les champs obligatoires (*) doivent être remplis et au moins une image !");
-    return;
-  }
-
+  ].filter((img) => img.trim() !== "");
   const newProduct = {
-    name, price, originalPrice, category, description, images,
+    name, price, originalPrice, images, category, description,
     stock: 100,
     status: "active",
     createdAt: new Date().toISOString()
   };
-
   try {
     await addDoc(collection(db, "products"), newProduct);
     document.getElementById("productForm").reset();
-    alert("Produit ajouté !");
+    alert("Produit ajouté avec succès!");
   } catch (e) {
-    alert("Erreur lors de l'ajout : " + e.message);
+    alert("Erreur lors de l'ajout: " + e.message);
   }
 }
 
-// Suppression produit
 window.deleteProduct = async function(id) {
-  if (confirm("Supprimer ce produit ?")) {
+  if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
     try {
       await deleteDoc(doc(db, "products", id));
     } catch (e) {
-      alert("Erreur suppression : " + e.message);
+      alert("Erreur suppression: " + e.message);
     }
   }
 };
 
-// Affichage produits
 function renderProductsList() {
   const productsList = document.getElementById("productsList");
   if (!products || products.length === 0) {
     productsList.innerHTML = "<p>Aucun produit ajouté.</p>";
     return;
   }
+  const sortedProducts = [...products].sort((a, b) => 
+    new Date(b.createdAt) - new Date(a.createdAt)
+  );
   productsList.innerHTML = `
-    <ul>
-      ${products.map(product => `
-        <li>
-          <img src="${product.images[0] || 'https://via.placeholder.com/80?text=Image'}" alt="${product.name}">
-          <div>
-            <strong>${product.name}</strong><br>
-            <span style="color:#059669;">${product.price.toFixed(2)} €</span>
-            <span style="text-decoration:line-through; color:#64748b;">${product.originalPrice.toFixed(2)} €</span>
-            <br><small>${product.category}</small>
-          </div>
-          <button class="btn btn-danger" onclick="deleteProduct('${product.id}')">Supprimer</button>
-        </li>
-      `).join("")}
-    </ul>
-  `;
+        <h3>Produits existants (${sortedProducts.length})</h3>
+        <div style="display: grid; gap: 1rem;">
+            ${sortedProducts
+              .map(
+                (product) => `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <img src="${product.images[0] || 'https://via.placeholder.com/60x60?text=Image+Manquante'}" alt="${product.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 0.375rem;">
+                        <div>
+                            <strong>${product.name}</strong><br>
+                            <span style="color: #10b981; font-weight: bold;">$${product.price.toFixed(2)}</span>
+                            <span style="color: #6b7280; text-decoration: line-through; margin-left: 0.5rem;">$${product.originalPrice.toFixed(2)}</span><br>
+                            <span style="color: #6b7280; font-size: 0.875rem;">${product.category}</span>
+                        </div>
+                    </div>
+                    <button onclick="deleteProduct('${product.id}')" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer;">
+                        <i class="fas fa-trash"></i> Supprimer
+                    </button>
+                </div>
+            `
+              )
+              .join("")}
+        </div>
+    `;
 }
 
-// Affichage utilisateurs
 function renderUsersList() {
   const usersList = document.getElementById("usersList");
   if (!users || users.length === 0) {
@@ -190,42 +173,41 @@ function renderUsersList() {
     return;
   }
   usersList.innerHTML = `
-    <ul>
-      ${users.map(user => `
-        <li style="background:white; margin-bottom:1rem; border-radius:0.5rem; padding:1rem;">
-          <strong>${user.name}</strong> <br>
-          <span>${user.email}</span> <br>
-          <small>Inscrit le : ${new Date(user.registeredAt).toLocaleDateString()}</small>
-        </li>
-      `).join("")}
-    </ul>
-  `;
+        <h3>Utilisateurs inscrits (${users.length})</h3>
+        <div style="display: grid; gap: 1rem;">
+            ${users
+              .map((user) => {
+                const isActive = isUserActive(user);
+                return `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white;">
+                        <div>
+                            <strong>${user.name}</strong><br>
+                            <span style="color: #6b7280;">${user.email}</span><br>
+                            <small>Inscrit le: ${new Date(user.registeredAt).toLocaleDateString()}</small>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="background: ${isActive ? "#10b981" : "#6b7280"}; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
+                                ${isActive ? "Actif" : "Inactif"}
+                            </span>
+                        </div>
+                    </div>
+                `;
+              })
+              .join("")}
+        </div>
+    `;
 }
 
-// Affichage commandes (exemple)
-function renderOrdersList() {
-  const ordersList = document.getElementById("ordersList");
-  if (!orders || orders.length === 0) {
-    ordersList.innerHTML = "<p>Aucune commande à afficher pour le moment.</p>";
-    return;
-  }
-  ordersList.innerHTML = `
-    <ul>
-      ${orders.map(order => `
-        <li>
-          <strong>Commande #${order.id}</strong><br>
-          <span>Utilisateur : ${order.userName || "?"}</span><br>
-          <span>Total : $${order.total ? order.total.toFixed(2) : "?"}</span><br>
-          <small>Date : ${order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "?"}</small>
-        </li>
-      `).join("")}
-    </ul>
-  `;
+function isUserActive(user) {
+  if (!user.lastActivity) return false;
+  const lastActivity = new Date(user.lastActivity);
+  const now = new Date();
+  const diffHours = (now - lastActivity) / (1000 * 60 * 60);
+  return diffHours < 24;
 }
 
-// Stats dashboard
 function updateStats() {
   document.getElementById("totalProducts").textContent = products.length;
   document.getElementById("totalUsers").textContent = users.length;
-  document.getElementById("totalOrders").textContent = orders.length;
+  document.getElementById("activeUsers").textContent = users.filter(isUserActive).length;
 }
