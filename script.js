@@ -3,12 +3,12 @@ import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/fi
 
 // CONFIG FIREBASE (remplace les valeurs par ton projet)
 const firebaseConfig = {
-  apiKey: "TON_API_KEY",
-  authDomain: "TON_AUTH_DOMAIN",
-  projectId: "TON_PROJECT_ID",
-  storageBucket: "TON_STORAGE_BUCKET",
-  messagingSenderId: "TON_MESSAGING_SENDER_ID",
-  appId: "TON_APP_ID"
+    apiKey: "AIzaSyBLUZl0j_gO7aZtT2zwgTISWO5ab9AFfE0",
+    authDomain: "marchat-b23f1.firebaseapp.com",
+    projectId: "marchat-b23f1",
+    storageBucket: "marchat-b23f1.firebasestorage.app",
+    messagingSenderId: "264746644024",
+    appId: "1:264746644024:web:d575bac7eb65c3d3062ccd",
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
