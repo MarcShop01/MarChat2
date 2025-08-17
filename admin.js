@@ -1,140 +1,103 @@
-// Configuration admin
-const ADMIN_PASSWORD = "marcshop2024"; // Mot de passe admin par défaut
-
-// État global
-let products = [];
-let users = [];
-let isLoggedIn = false;
-
-// Initialisation
+// Initialisation de l'administration
 document.addEventListener("DOMContentLoaded", () => {
-  loadData();
-  setupEventListeners();
-  checkAdminSession();
-});
-
-// Gestion des données
-function loadData() {
-  try {
-    products = JSON.parse(localStorage.getItem("marcshop-products")) || [];
-    users = JSON.parse(localStorage.getItem("marcshop-users")) || [];
-    
-    // Correction pour les anciens produits sans createdAt
-    products = products.map(p => {
-      if (!p.createdAt) {
-        p.createdAt = new Date().toISOString();
-      }
-      return p;
-    });
-    
-  } catch (e) {
-    console.error("Erreur de chargement des données:", e);
-    products = [];
-    users = [];
-  }
-}
-
-function saveData() {
-  localStorage.setItem("marcshop-products", JSON.stringify(products));
-  localStorage.setItem("marcshop-users", JSON.stringify(users));
-}
-
-// Configuration des événements
-function setupEventListeners() {
-  document.getElementById("loginForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    login();
-  });
-
-  document.getElementById("productForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    addProduct();
-  });
-}
-
-// Authentification admin
-function checkAdminSession() {
-  const adminSession = localStorage.getItem("marcshop-admin-session");
-  if (adminSession) {
-    const sessionData = JSON.parse(adminSession);
-    const now = new Date().getTime();
-
-    // Session valide pendant 24h
-    if (now - sessionData.timestamp < 24 * 60 * 60 * 1000) {
-      showDashboard();
-      return;
-    }
-  }
-  showLogin();
-}
-
-function login() {
-  const password = document.getElementById("adminPassword").value;
-
-  if (password === ADMIN_PASSWORD) {
-    // Créer une session admin
-    const sessionData = {
-      timestamp: new Date().getTime(),
-      isAdmin: true,
-    };
-    localStorage.setItem("marcshop-admin-session", JSON.stringify(sessionData));
-
+  // Vérifier si l'utilisateur est déjà connecté
+  const isLoggedIn = localStorage.getItem("adminLoggedIn") === "true";
+  
+  if (isLoggedIn) {
     showDashboard();
   } else {
-    alert("Mot de passe incorrect!");
-    document.getElementById("adminPassword").value = "";
+    document.getElementById("adminLogin").style.display = "flex";
   }
-}
-
-function logout() {
-  localStorage.removeItem("marcshop-admin-session");
-  showLogin();
-}
-
-function showLogin() {
-  document.getElementById("adminLogin").style.display = "flex";
-  document.getElementById("adminDashboard").style.display = "none";
-  isLoggedIn = false;
-}
+  
+  // Écouteur pour le formulaire de connexion
+  document.getElementById("loginForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const password = document.getElementById("adminPassword").value;
+    
+    // Vérification du mot de passe (remplacez par votre vrai mot de passe)
+    if (password === "admin123") {
+      localStorage.setItem("adminLoggedIn", "true");
+      showDashboard();
+    } else {
+      alert("Mot de passe incorrect");
+    }
+  });
+  
+  // Écouteur pour le formulaire d'ajout de produit
+  const productForm = document.getElementById("productForm");
+  if (productForm) {
+    productForm.addEventListener("submit", function(e) {
+      e.preventDefault();
+      addProductAdmin();
+    });
+  }
+});
 
 function showDashboard() {
   document.getElementById("adminLogin").style.display = "none";
   document.getElementById("adminDashboard").style.display = "block";
-  isLoggedIn = true;
-
   updateStats();
-  renderProductsList();
-  renderUsersList();
 }
 
-// Navigation admin
-function showSection(sectionName) {
-  document.querySelectorAll(".sidebar-btn").forEach((btn) => btn.classList.remove("active"));
-  document.querySelectorAll(".admin-section").forEach((section) => section.classList.remove("active"));
-
-  event.target.classList.add("active");
-  document.getElementById(sectionName + "Section").classList.add("active");
-
-  // Actualiser les données selon la section
-  if (sectionName === "dashboard") updateStats();
-  if (sectionName === "products") renderProductsList();
-  if (sectionName === "users") renderUsersList();
+function logout() {
+  localStorage.removeItem("adminLoggedIn");
+  document.getElementById("adminDashboard").style.display = "none";
+  document.getElementById("adminLogin").style.display = "flex";
+  document.getElementById("adminPassword").value = "";
 }
 
-// Gestion des produits
-function addProduct() {
+function showSection(sectionId) {
+  // Masquer toutes les sections
+  document.querySelectorAll(".admin-section").forEach(section => {
+    section.style.display = "none";
+  });
+  
+  // Désactiver tous les boutons
+  document.querySelectorAll(".sidebar-btn").forEach(btn => {
+    btn.classList.remove("active");
+  });
+  
+  // Afficher la section sélectionnée
+  document.getElementById(`${sectionId}Section`).style.display = "block";
+  
+  // Activer le bouton correspondant
+  document.querySelector(`.sidebar-btn[onclick="showSection('${sectionId}')"]`).classList.add("active");
+}
+
+function updateStats() {
+  // Charger les données depuis localStorage
+  let products = JSON.parse(localStorage.getItem("marcshop-products")) || [];
+  let users = JSON.parse(localStorage.getItem("marcshop-users")) || [];
+  
+  // Mettre à jour les statistiques
+  document.getElementById("totalProducts").textContent = products.length;
+  document.getElementById("totalUsers").textContent = users.length;
+  
+  // Calculer les utilisateurs actifs (simplifié)
+  const activeUsers = users.filter(user => user.isActive).length;
+  document.getElementById("activeUsers").textContent = activeUsers;
+}
+
+function addProductAdmin() {
   const name = document.getElementById("productName").value;
-  const price = Number.parseFloat(document.getElementById("productPrice").value);
-  const originalPrice = Number.parseFloat(document.getElementById("productOriginalPrice").value);
+  const price = parseFloat(document.getElementById("productPrice").value);
+  const originalPrice = parseFloat(document.getElementById("productOriginalPrice").value);
+  const image1 = document.getElementById("productImage1").value;
+  const image2 = document.getElementById("productImage2").value;
+  const image3 = document.getElementById("productImage3").value;
+  const image4 = document.getElementById("productImage4").value;
   const category = document.getElementById("productCategory").value;
   const description = document.getElementById("productDescription").value;
 
-  const images = [
-    document.getElementById("productImage1").value,
-    document.getElementById("productImage2").value,
-    document.getElementById("productImage3").value,
-    document.getElementById("productImage4").value,
-  ].filter((img) => img.trim() !== "");
+  if (!name || isNaN(price) || isNaN(originalPrice) || !image1 || !category) {
+    alert("Veuillez remplir tous les champs obligatoires (*)");
+    return;
+  }
+
+  const images = [image1];
+  if (image2) images.push(image2);
+  if (image3) images.push(image3);
+  if (image4) images.push(image4);
 
   const newProduct = {
     id: Date.now(),
@@ -146,116 +109,19 @@ function addProduct() {
     description: description,
     stock: 100,
     status: "active",
-    createdAt: new Date().toISOString() // Ajout de la date de création
+    createdAt: new Date().toISOString()
   };
 
+  // Charger les produits existants
+  let products = JSON.parse(localStorage.getItem("marcshop-products")) || [];
   products.push(newProduct);
-  saveData();
-  renderProductsList();
-  updateStats();
+  localStorage.setItem("marcshop-products", JSON.stringify(products));
+  
+  // Réinitialiser le formulaire
   document.getElementById("productForm").reset();
+  
+  // Mettre à jour les statistiques
+  updateStats();
+  
   alert("Produit ajouté avec succès!");
-}
-
-function deleteProduct(id) {
-  if (confirm("Êtes-vous sûr de vouloir supprimer ce produit?")) {
-    products = products.filter((p) => p.id !== id);
-    saveData();
-    renderProductsList();
-    updateStats();
-  }
-}
-
-// Affichage des produits (CORRIGÉ)
-function renderProductsList() {
-  const productsList = document.getElementById("productsList");
-
-  if (products.length === 0) {
-    productsList.innerHTML = "<p>Aucun produit ajouté.</p>";
-    return;
-  }
-
-  // Trier les produits par date de création (récent en premier)
-  const sortedProducts = [...products].sort((a, b) => 
-    new Date(b.createdAt) - new Date(a.createdAt)
-  );
-
-  productsList.innerHTML = `
-        <h3>Produits existants (${sortedProducts.length})</h3>
-        <div style="display: grid; gap: 1rem;">
-            ${sortedProducts
-              .map(
-                (product) => `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white;">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <img src="${product.images[0] || 'https://via.placeholder.com/60x60?text=Image+Manquante'}" alt="${product.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 0.375rem;">
-                        <div>
-                            <strong>${product.name}</strong><br>
-                            <span style="color: #10b981; font-weight: bold;">$${product.price.toFixed(2)}</span>
-                            <span style="color: #6b7280; text-decoration: line-through; margin-left: 0.5rem;">$${product.originalPrice.toFixed(2)}</span><br>
-                            <span style="color: #6b7280; font-size: 0.875rem;">${product.category}</span>
-                        </div>
-                    </div>
-                    <button onclick="deleteProduct(${product.id})" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer;">
-                        <i class="fas fa-trash"></i> Supprimer
-                    </button>
-                </div>
-            `
-              )
-              .join("")}
-        </div>
-    `;
-}
-
-// Gestion des utilisateurs
-function renderUsersList() {
-  const usersList = document.getElementById("usersList");
-
-  if (users.length === 0) {
-    usersList.innerHTML = "<p>Aucun utilisateur inscrit.</p>";
-    return;
-  }
-
-  usersList.innerHTML = `
-        <h3>Utilisateurs inscrits (${users.length})</h3>
-        <div style="display: grid; gap: 1rem;">
-            ${users
-              .map((user) => {
-                const isActive = isUserActive(user);
-                return `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid #e5e7eb; border-radius: 0.375rem; background: white;">
-                        <div>
-                            <strong>${user.name}</strong><br>
-                            <span style="color: #6b7280;">${user.email}</span><br>
-                            <small>Inscrit le: ${new Date(user.registeredAt).toLocaleDateString()}</small>
-                        </div>
-                        <div style="text-align: right;">
-                            <span style="background: ${isActive ? "#10b981" : "#6b7280"}; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">
-                                ${isActive ? "Actif" : "Inactif"}
-                            </span>
-                        </div>
-                    </div>
-                `;
-              })
-              .join("")}
-        </div>
-    `;
-}
-
-function isUserActive(user) {
-  const lastActivity = new Date(user.lastActivity);
-  const now = new Date();
-  const diffHours = (now - lastActivity) / (1000 * 60 * 60);
-  return diffHours < 24;
-}
-
-// Statistiques
-function updateStats() {
-  const totalProducts = products.length;
-  const totalUsers = users.length;
-  const activeUsers = users.filter((user) => isUserActive(user)).length;
-
-  document.getElementById("totalProducts").textContent = totalProducts;
-  document.getElementById("totalUsers").textContent = totalUsers;
-  document.getElementById("activeUsers").textContent = activeUsers;
 }
