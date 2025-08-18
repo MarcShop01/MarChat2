@@ -7,6 +7,7 @@ let cart = [];
 let users = [];
 let currentProductImages = [];
 let currentImageIndex = 0;
+let isAddingToCart = false; // Nouveau flag pour contrôler les ajouts multiples
 
 const SIZES = ["XS", "S", "M", "L", "XL"];
 const COLORS = ["Blanc", "Noir", "Rouge", "Bleu", "Vert", "Jaune"];
@@ -20,7 +21,6 @@ document.addEventListener("DOMContentLoaded", () => {
   setupLightbox();
   setupAdminListeners();
   window.toggleCart = toggleCart;
-  // window.toggleAdmin = toggleAdmin; // admin retiré
 });
 
 function loadFirestoreProducts() {
@@ -41,9 +41,6 @@ function loadFirestoreUsers() {
       ...doc.data(),
       id: doc.id
     }));
-    // Optionnel : admin
-    // renderUsersAdmin();
-    // updateAdminStats();
   });
 }
 
@@ -86,7 +83,6 @@ function setupEventListeners() {
 
   document.getElementById("shareBtn").addEventListener("click", shareWebsite);
 
-  // Sur le logo ou le bouton user, affiche le nom inscrit
   document.querySelector(".user-logo").addEventListener("click", showUserProfile);
   document.getElementById("profileBtn").addEventListener("click", showUserProfile);
 
@@ -226,8 +222,13 @@ function renderProducts() {
 }
 
 window.addToCart = function(productId) {
+  // Empêche les ajouts multiples si un ajout est déjà en cours
+  if (isAddingToCart) return;
+  
   const product = products.find((p) => p.id === productId);
   if (!product) return;
+  
+  isAddingToCart = true; // Marque le début de l'ajout
   openProductOptions(product);
 };
 
@@ -261,26 +262,35 @@ function openProductOptions(product) {
     </div>
   `;
   document.body.appendChild(modal);
-  document.getElementById("closeOptions").onclick = () => {modal.remove(); overlay.classList.remove("active");};
   
-  // Correction pour éviter les ajouts multiples
+  // Réinitialise le flag lors de l'annulation
+  document.getElementById("closeOptions").onclick = () => {
+    modal.remove(); 
+    overlay.classList.remove("active");
+    isAddingToCart = false;
+  };
+  
   document.getElementById("optionsForm").onsubmit = function(e) {
     e.preventDefault();
     const submitBtn = document.getElementById("submitOptions");
-    submitBtn.disabled = true; // Désactiver le bouton après clic
+    submitBtn.disabled = true; // Désactive le bouton pendant le traitement
     
     const size = document.getElementById("cartSize").value;
     const color = document.getElementById("cartColor").value;
     const qty = parseInt(document.getElementById("cartQty").value)||1;
+    
     addProductToCart(product, size, color, qty);
+    
     modal.remove();
     overlay.classList.remove("active");
+    isAddingToCart = false; // Réinitialise le flag
   };
 }
 
 function addProductToCart(product, size, color, quantity) {
   const key = `${product.id}-${size}-${color}`;
   let existing = cart.find((item) => item.key === key);
+  
   if (existing) {
     existing.quantity += quantity;
   } else {
@@ -295,8 +305,32 @@ function addProductToCart(product, size, color, quantity) {
       color
     });
   }
+  
   saveCart();
   updateCartUI();
+  
+  // Affiche une confirmation d'ajout
+  showCartNotification(`${product.name} ajouté au panier!`);
+}
+
+function showCartNotification(message) {
+  const notification = document.createElement("div");
+  notification.className = "cart-notification";
+  notification.textContent = message;
+  document.body.appendChild(notification);
+  
+  // Animation d'apparition
+  setTimeout(() => {
+    notification.classList.add("show");
+  }, 10);
+  
+  // Disparition après 2 secondes
+  setTimeout(() => {
+    notification.classList.remove("show");
+    setTimeout(() => {
+      notification.remove();
+    }, 300);
+  }, 2000);
 }
 
 function updateCartUI() {
@@ -353,6 +387,7 @@ window.updateQuantity = function(key, newQuantity) {
   saveCart();
   updateCartUI();
 };
+
 window.removeFromCart = function(key) {
   cart = cart.filter((i) => i.key !== key);
   saveCart();
