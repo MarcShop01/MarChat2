@@ -52,27 +52,25 @@
     <header class="header">
         <div class="container">
             <div class="header-content">
-                <div class="logo">
-                    <h1>MarcShop</h1>
+                <div class="logo user-logo" style="cursor:pointer;">
+                    <h1 id="userNameDisplay">MarcShop</h1>
                 </div>
                 <div class="search-bar">
                     <i class="fas fa-search"></i>
                     <input type="text" placeholder="Rechercher des produits...">
                 </div>
                 <div class="header-actions">
-                    <button class="share-btn" onclick="shareWebsite()">
+                    <button class="share-btn" id="shareBtn">
                         <i class="fas fa-share-alt"></i>
                     </button>
-                    <button class="user-btn">
+                    <button class="user-btn" id="profileBtn">
                         <i class="fas fa-user"></i>
                     </button>
                     <button class="cart-btn" onclick="toggleCart()">
                         <i class="fas fa-shopping-cart"></i>
                         <span id="cartCount" class="cart-count">0</span>
                     </button>
-                    <button class="admin-btn" onclick="toggleAdmin()">
-                        <i class="fas fa-cog"></i>
-                    </button>
+                    <!-- Bouton admin retiré -->
                 </div>
             </div>
         </div>
@@ -121,74 +119,18 @@
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div id="cartItems" class="cart-items">
-            <div class="empty-cart">
-                <i class="fas fa-shopping-cart"></i>
-                <p>Votre panier est vide</p>
-            </div>
+        <div id="cartItems" class="cart-items"></div>
+        <div style="margin:1.5rem 0;">
+            <div id="paypal-button-container"></div>
         </div>
         <div class="cart-footer">
             <div class="cart-total">
                 <strong>Total: $<span id="cartTotal">0.00</span></strong>
             </div>
-            <button class="checkout-btn" onclick="checkout()">Commander</button>
         </div>
     </div>
 
-    <!-- Interface Admin -->
-    <div id="adminPanel" class="admin-panel">
-        <div class="admin-header">
-            <h3>Administration MarcShop</h3>
-            <button onclick="toggleAdmin()" class="close-btn">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="admin-tabs">
-            <button class="tab-btn active" data-tab="products">Produits</button>
-            <button class="tab-btn" data-tab="users">Utilisateurs</button>
-        </div>
-        
-        <!-- Gestion Produits -->
-        <div id="productsTab" class="tab-content active">
-            <div class="add-product-form">
-                <h4>Ajouter un Produit</h4>
-                <form id="productForm">
-                    <input type="text" id="productName" placeholder="Nom du produit" required>
-                    <input type="number" id="productPrice" placeholder="Prix ($)" step="0.01" required>
-                    <input type="number" id="productOriginalPrice" placeholder="Prix original ($)" step="0.01" required>
-                    <input type="url" id="productImage1" placeholder="URL Image 1" required>
-                    <input type="url" id="productImage2" placeholder="URL Image 2">
-                    <input type="url" id="productImage3" placeholder="URL Image 3">
-                    <input type="url" id="productImage4" placeholder="URL Image 4">
-                    <select id="productCategory" required>
-                        <option value="">Sélectionner une catégorie</option>
-                        <option value="electronics">Électronique</option>
-                        <option value="clothing">Vêtements</option>
-                        <option value="home">Maison</option>
-                        <option value="sports">Sports</option>
-                    </select>
-                    <textarea id="productDescription" placeholder="Description du produit"></textarea>
-                    <button type="submit">Ajouter le Produit</button>
-                </form>
-            </div>
-            <div id="productsList" class="products-list"></div>
-        </div>
-
-        <!-- Gestion Utilisateurs -->
-        <div id="usersTab" class="tab-content">
-            <div class="users-stats">
-                <div class="stat-card">
-                    <h4>Utilisateurs Totaux</h4>
-                    <span id="totalUsers">0</span>
-                </div>
-                <div class="stat-card">
-                    <h4>Utilisateurs Actifs</h4>
-                    <span id="activeUsers">0</span>
-                </div>
-            </div>
-            <div id="usersList" class="users-list"></div>
-        </div>
-    </div>
+    <!-- Interface Admin (optionnel, invisible pour client)-->
 
     <!-- Overlay -->
     <div id="overlay" class="overlay"></div>
@@ -201,6 +143,8 @@
         <img class="lightbox-content" id="lightboxImage">
     </div>
 
+    <!-- PayPal SDK -->
+    <script src="https://www.paypal.com/sdk/js?client-id=AX4iV51P3BZMi2XMsaCvCWpHRKzVLsXSBTpCiJg16aZ62_ToUcO3Y-KLtA3v_0rM_LHfM2W7dmGbsOZF&currency=USD"></script>
     <script type="module" src="script.js"></script>
 </body>
 </html>
