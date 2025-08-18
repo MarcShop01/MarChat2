@@ -8,16 +8,19 @@ let users = [];
 let currentProductImages = [];
 let currentImageIndex = 0;
 
+const SIZES = ["XS", "S", "M", "L", "XL"];
+const COLORS = ["Blanc", "Noir", "Rouge", "Bleu", "Vert", "Jaune"];
+
 document.addEventListener("DOMContentLoaded", () => {
   loadFirestoreProducts();
   loadFirestoreUsers();
   loadCart();
   checkUserRegistration();
   setupEventListeners();
-  renderProducts();
-  updateCartUI();
   setupLightbox();
   setupAdminListeners();
+  window.toggleCart = toggleCart;
+  // window.toggleAdmin = toggleAdmin; // admin retiré
 });
 
 function loadFirestoreProducts() {
@@ -38,8 +41,9 @@ function loadFirestoreUsers() {
       ...doc.data(),
       id: doc.id
     }));
-    renderUsersAdmin();
-    updateAdminStats();
+    // Optionnel : admin
+    // renderUsersAdmin();
+    // updateAdminStats();
   });
 }
 
@@ -64,6 +68,8 @@ function checkUserRegistration() {
     setTimeout(() => {
       document.getElementById("registrationModal").classList.add("active");
     }, 1000);
+  } else {
+    displayUserName();
   }
 }
 
@@ -73,11 +79,16 @@ function setupEventListeners() {
     const name = document.getElementById("userName").value.trim();
     const email = document.getElementById("userEmail").value.trim();
     const phone = document.getElementById("userPhone").value.trim();
-
     if (name && email && phone) {
       await registerUser(name, email, phone);
     }
   });
+
+  document.getElementById("shareBtn").addEventListener("click", shareWebsite);
+
+  // Sur le logo ou le bouton user, affiche le nom inscrit
+  document.querySelector(".user-logo").addEventListener("click", showUserProfile);
+  document.getElementById("profileBtn").addEventListener("click", showUserProfile);
 
   document.querySelectorAll(".category-btn").forEach((btn) => {
     btn.addEventListener("click", function () {
@@ -106,38 +117,15 @@ function setupLightbox() {
 }
 
 function setupAdminListeners() {
-  const productForm = document.getElementById("productForm");
-  if (productForm) {
-    productForm.addEventListener("submit", function(e) {
-      e.preventDefault();
-      alert("L'ajout de produit est réservé à l'administrateur via la page admin.");
-    });
-    const submitBtn = productForm.querySelector('button[type="submit"]');
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.style.background = "#ccc";
-      submitBtn.title = "Ajout réservé à l'admin";
-    }
-  }
-  const adminBtn = document.querySelector(".admin-btn");
-  if (adminBtn) {
-    adminBtn.addEventListener("click", toggleAdmin);
-  }
-  document.querySelectorAll(".tab-btn").forEach(btn => {
-    btn.addEventListener("click", function() {
-      switchTab(this.dataset.tab);
-    });
-  });
+  // Retiré - plus de bouton admin
 }
 
 window.openLightbox = openLightbox;
 function openLightbox(productId, imgIndex = 0) {
   const product = products.find(p => p.id === productId);
   if (!product || !product.images || product.images.length === 0) return;
-  
   currentProductImages = product.images;
   currentImageIndex = imgIndex;
-  
   const lightboxImg = document.getElementById("lightboxImage");
   lightboxImg.src = currentProductImages[currentImageIndex];
   document.getElementById("productLightbox").style.display = "block";
@@ -160,7 +148,6 @@ function changeImage(direction) {
   lightboxImg.src = currentProductImages[currentImageIndex];
 }
 
-// Inscription utilisateur - ENREGISTRE sur Firestore
 async function registerUser(name, email, phone) {
   const newUser = {
     name: name,
@@ -175,6 +162,7 @@ async function registerUser(name, email, phone) {
     newUser.id = ref.id;
     currentUser = newUser;
     saveCart();
+    displayUserName();
     document.getElementById("registrationModal").classList.remove("active");
   } catch (e) {
     alert("Erreur lors de l'inscription. Réessayez.");
@@ -182,13 +170,21 @@ async function registerUser(name, email, phone) {
   }
 }
 
-// Affichage des produits
+function displayUserName() {
+  const name = currentUser && currentUser.name ? currentUser.name : "MarcShop";
+  document.getElementById("userNameDisplay").textContent = name;
+}
+
+function showUserProfile() {
+  if (!currentUser) return;
+  alert(`Bienvenue ${currentUser.name}\nEmail : ${currentUser.email}\nTéléphone : ${currentUser.phone}`);
+}
+
 function renderProducts() {
   const grid = document.getElementById("productsGrid");
   const sortedProducts = [...products].sort((a, b) => 
     new Date(b.createdAt) - new Date(a.createdAt)
   );
-
   if (sortedProducts.length === 0) {
     grid.innerHTML = `
       <div class="no-products">
@@ -198,7 +194,6 @@ function renderProducts() {
     `;
     return;
   }
-
   grid.innerHTML = sortedProducts.map(product => {
     const discount = product.originalPrice > 0 ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
     const rating = 4.0 + Math.random() * 1.0;
@@ -230,75 +225,78 @@ function renderProducts() {
   }).join("");
 }
 
-// Filtrage par catégorie
-function filterByCategory(category) {
-  document.querySelectorAll(".category-btn").forEach((btn) => {
-    btn.classList.remove("active");
-  });
-  document.querySelector(`[data-category="${category}"]`).classList.add("active");
-
-  const productCards = document.querySelectorAll(".product-card");
-  productCards.forEach((card) => {
-    if (category === "all" || card.dataset.category === category) {
-      card.style.display = "block";
-    } else {
-      card.style.display = "none";
-    }
-  });
-}
-
-// Gestion du panier
-window.addToCart = addToCart;
-function addToCart(productId) {
+window.addToCart = function(productId) {
   const product = products.find((p) => p.id === productId);
   if (!product) return;
+  openProductOptions(product);
+};
 
-  const existingItem = cart.find((item) => item.id === productId);
+function openProductOptions(product) {
+  const overlay = document.getElementById("overlay");
+  overlay.classList.add("active");
+  let modal = document.createElement("div");
+  modal.className = "modal";
+  modal.style.display = "flex";
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width:400px;">
+      <h3>Ajouter au panier</h3>
+      <img src="${product.images[0]}" style="max-width:120px;max-height:120px;border-radius:6px;">
+      <p><strong>${product.name}</strong></p>
+      <form id="optionsForm">
+        <label for="cartSize">Taille :</label>
+        <select id="cartSize" required>
+          <option value="">Sélectionner</option>
+          ${SIZES.map(s=>`<option value="${s}">${s}</option>`).join("")}
+        </select>
+        <label for="cartColor" style="margin-top:1rem;">Couleur :</label>
+        <select id="cartColor" required>
+          <option value="">Sélectionner</option>
+          ${COLORS.map(c=>`<option value="${c}">${c}</option>`).join("")}
+        </select>
+        <label for="cartQty" style="margin-top:1rem;">Quantité :</label>
+        <input type="number" id="cartQty" min="1" value="1" style="width:60px;">
+        <button type="submit" id="submitOptions" style="margin-top:1rem;background:#10b981;color:white;">Ajouter au panier</button>
+        <button type="button" id="closeOptions" style="margin-top:0.5rem;">Annuler</button>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById("closeOptions").onclick = () => {modal.remove(); overlay.classList.remove("active");};
+  
+  // Correction pour éviter les ajouts multiples
+  document.getElementById("optionsForm").onsubmit = function(e) {
+    e.preventDefault();
+    const submitBtn = document.getElementById("submitOptions");
+    submitBtn.disabled = true; // Désactiver le bouton après clic
+    
+    const size = document.getElementById("cartSize").value;
+    const color = document.getElementById("cartColor").value;
+    const qty = parseInt(document.getElementById("cartQty").value)||1;
+    addProductToCart(product, size, color, qty);
+    modal.remove();
+    overlay.classList.remove("active");
+  };
+}
 
-  if (existingItem) {
-    existingItem.quantity += 1;
+function addProductToCart(product, size, color, quantity) {
+  const key = `${product.id}-${size}-${color}`;
+  let existing = cart.find((item) => item.key === key);
+  if (existing) {
+    existing.quantity += quantity;
   } else {
     cart.push({
+      key,
       id: product.id,
       name: product.name,
       price: product.price,
       image: product.images[0],
-      quantity: 1,
+      quantity,
+      size,
+      color
     });
   }
-
   saveCart();
   updateCartUI();
-
-  const btn = event.target;
-  const originalText = btn.innerHTML;
-  btn.innerHTML = '<i class="fas fa-check"></i> Ajouté!';
-  btn.style.background = "#059669";
-  setTimeout(() => {
-    btn.innerHTML = originalText;
-    btn.style.background = "#10b981";
-  }, 1000);
-}
-
-window.removeFromCart = removeFromCart;
-function removeFromCart(productId) {
-  cart = cart.filter((item) => item.id !== productId);
-  saveCart();
-  updateCartUI();
-}
-
-window.updateQuantity = updateQuantity;
-function updateQuantity(productId, newQuantity) {
-  if (newQuantity <= 0) {
-    removeFromCart(productId);
-    return;
-  }
-  const item = cart.find((item) => item.id === productId);
-  if (item) {
-    item.quantity = newQuantity;
-    saveCart();
-    updateCartUI();
-  }
 }
 
 function updateCartUI() {
@@ -319,64 +317,93 @@ function updateCartUI() {
         <p>Votre panier est vide</p>
       </div>
     `;
+    const paypalDiv = document.getElementById("paypal-button-container");
+    if (paypalDiv) paypalDiv.innerHTML = '';
   } else {
-    cartItems.innerHTML = cart
-      .map(
-        (item) => `
-          <div class="cart-item">
-            <img src="${item.image}" alt="${item.name}">
-            <div class="cart-item-info">
-              <div class="cart-item-name">${item.name}</div>
-              <div class="cart-item-price">$${item.price.toFixed(2)}</div>
-              <div class="quantity-controls">
-                <button class="quantity-btn" onclick="updateQuantity('${item.id}', ${item.quantity - 1})">-</button>
-                <span>${item.quantity}</span>
-                <button class="quantity-btn" onclick="updateQuantity('${item.id}', ${item.quantity + 1})">+</button>
-                <button class="quantity-btn" onclick="removeFromCart('${item.id}')" style="margin-left: 1rem; color: #ef4444;">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </div>
-            </div>
+    cartItems.innerHTML = cart.map(item => `
+      <div class="cart-item">
+        <img src="${item.image}" alt="${item.name}">
+        <div class="cart-item-info">
+          <div class="cart-item-name">${item.name}</div>
+          <div style="font-size:0.9em;color:#666;">Taille: <b>${item.size}</b>, Couleur: <b>${item.color}</b></div>
+          <div class="cart-item-price">$${item.price.toFixed(2)}</div>
+          <div class="quantity-controls">
+            <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity - 1})">-</button>
+            <span>${item.quantity}</span>
+            <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity + 1})">+</button>
+            <button class="quantity-btn" onclick="removeFromCart('${item.key}')" style="margin-left: 1rem; color: #ef4444;">
+              <i class="fas fa-trash"></i>
+            </button>
           </div>
-        `
-      )
-      .join("");
+        </div>
+      </div>
+    `).join("");
+    renderPaypalButton(totalPrice);
   }
 }
 
-// ADMIN : Affichage utilisateurs
-function renderUsersAdmin() {
-  const usersList = document.getElementById("usersList");
-  if (!usersList) return;
-  if (!users || users.length === 0) {
-    usersList.innerHTML = "<p>Aucun utilisateur inscrit.</p>";
-    return;
+window.updateQuantity = function(key, newQuantity) {
+  let item = cart.find((i) => i.key === key);
+  if (!item) return;
+  if (newQuantity <= 0) {
+    cart = cart.filter((i) => i.key !== key);
+  } else {
+    item.quantity = newQuantity;
   }
-  usersList.innerHTML = users.map(user => `
-    <div class="admin-user-card" style="background:white; margin-bottom:1rem; border-radius:0.5rem; padding:1rem;">
-      <strong>${user.name}</strong><br>
-      <span>${user.email}</span><br>
-      <span>${user.phone}</span><br>
-      <small>Inscrit le : ${user.registeredAt ? new Date(user.registeredAt).toLocaleDateString() : ""}</small>
-    </div>
-  `).join("");
-}
-function updateAdminStats() {
-  const totalUsers = document.getElementById("totalUsers");
-  if (totalUsers) totalUsers.textContent = users.length;
-  // Optionnel : calculer "actifs" selon lastActivity < 24h
-  const activeUsers = document.getElementById("activeUsers");
-  if (activeUsers) {
-    const active = users.filter(u => {
-      if (!u.lastActivity) return false;
-      const last = new Date(u.lastActivity);
-      return (new Date() - last) < 24*60*60*1000;
-    });
-    activeUsers.textContent = active.length;
-  }
+  saveCart();
+  updateCartUI();
+};
+window.removeFromCart = function(key) {
+  cart = cart.filter((i) => i.key !== key);
+  saveCart();
+  updateCartUI();
+};
+
+function renderPaypalButton(totalPrice) {
+  if (!window.paypal) return;
+  const container = document.getElementById("paypal-button-container");
+  if (!container) return;
+  container.innerHTML = "";
+  window.paypal.Buttons({
+    style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' },
+    createOrder: function(data, actions) {
+      return actions.order.create({
+        purchase_units: [{
+          amount: { value: totalPrice.toFixed(2) }
+        }]
+      });
+    },
+    onApprove: function(data, actions) {
+      return actions.order.capture().then(function(details) {
+        alert('Paiement réussi, merci ' + details.payer.name.given_name + ' !');
+        cart = [];
+        saveCart();
+        updateCartUI();
+      });
+    },
+    onError: function(err) {
+      alert("Une erreur est survenue avec PayPal.");
+      console.log(err);
+    }
+  }).render('#paypal-button-container');
 }
 
-// Interface utilisateur
+function filterByCategory(category) {
+  document.querySelectorAll(".category-btn").forEach((btn) => {
+    btn.classList.remove("active");
+  });
+  document.querySelector(`[data-category="${category}"]`).classList.add("active");
+
+  const productCards = document.querySelectorAll(".product-card");
+  productCards.forEach((card) => {
+    if (category === "all" || card.dataset.category === category) {
+      card.style.display = "block";
+    } else {
+      card.style.display = "none";
+    }
+  });
+}
+
 function toggleCart() {
   const sidebar = document.getElementById("cartSidebar");
   const overlay = document.getElementById("overlay");
@@ -384,16 +411,8 @@ function toggleCart() {
   overlay.classList.toggle("active");
 }
 
-function toggleAdmin() {
-  const panel = document.getElementById("adminPanel");
-  const overlay = document.getElementById("overlay");
-  panel.classList.toggle("active");
-  overlay.classList.toggle("active");
-}
-
 function closeAllPanels() {
   document.getElementById("cartSidebar").classList.remove("active");
-  document.getElementById("adminPanel").classList.remove("active");
   document.getElementById("overlay").classList.remove("active");
   closeLightbox();
 }
@@ -415,20 +434,4 @@ function shareWebsite() {
       alert("Lien copié dans le presse-papiers!");
     });
   }
-}
-
-function checkout() {
-  if (cart.length === 0) {
-    alert("Votre panier est vide!");
-    return;
-  }
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  alert(
-    `Commande confirmée!\n${itemCount} article(s) pour un total de $${total.toFixed(2)}\n\nMerci pour votre achat sur MarcShop!`
-  );
-  cart = [];
-  saveCart();
-  updateCartUI();
-  closeAllPanels();
 }
