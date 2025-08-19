@@ -7,7 +7,7 @@ let cart = [];
 let users = [];
 let currentProductImages = [];
 let currentImageIndex = 0;
-let isAddingToCart = false; // Nouveau flag pour contrôler les ajouts multiples
+let isAddingToCart = false;
 
 const SIZES = ["XS", "S", "M", "L", "XL"];
 const COLORS = ["Blanc", "Noir", "Rouge", "Bleu", "Vert", "Jaune"];
@@ -51,6 +51,7 @@ function loadCart() {
   } catch (e) {
     cart = [];
   }
+  updateCartUI(); // Mettre à jour l'UI immédiatement après chargement
 }
 
 function saveCart() {
@@ -58,6 +59,7 @@ function saveCart() {
   if (currentUser) {
     localStorage.setItem("marcshop-current-user", JSON.stringify(currentUser));
   }
+  updateCartUI(); // Mettre à jour l'UI après chaque sauvegarde
 }
 
 function checkUserRegistration() {
@@ -222,13 +224,12 @@ function renderProducts() {
 }
 
 window.addToCart = function(productId) {
-  // Empêche les ajouts multiples si un ajout est déjà en cours
   if (isAddingToCart) return;
   
   const product = products.find((p) => p.id === productId);
   if (!product) return;
   
-  isAddingToCart = true; // Marque le début de l'ajout
+  isAddingToCart = true;
   openProductOptions(product);
 };
 
@@ -245,17 +246,17 @@ function openProductOptions(product) {
       <p><strong>${product.name}</strong></p>
       <form id="optionsForm">
         <label for="cartSize">Taille :</label>
-        <select id="cartSize" required>
+        <select id="cartSize" name="size" required>
           <option value="">Sélectionner</option>
           ${SIZES.map(s=>`<option value="${s}">${s}</option>`).join("")}
         </select>
         <label for="cartColor" style="margin-top:1rem;">Couleur :</label>
-        <select id="cartColor" required>
+        <select id="cartColor" name="color" required>
           <option value="">Sélectionner</option>
           ${COLORS.map(c=>`<option value="${c}">${c}</option>`).join("")}
         </select>
         <label for="cartQty" style="margin-top:1rem;">Quantité :</label>
-        <input type="number" id="cartQty" min="1" value="1" style="width:60px;">
+        <input type="number" id="cartQty" name="qty" min="1" value="1" style="width:60px;">
         <button type="submit" id="submitOptions" style="margin-top:1rem;background:#10b981;color:white;">Ajouter au panier</button>
         <button type="button" id="closeOptions" style="margin-top:0.5rem;">Annuler</button>
       </form>
@@ -263,7 +264,6 @@ function openProductOptions(product) {
   `;
   document.body.appendChild(modal);
   
-  // Réinitialise le flag lors de l'annulation
   document.getElementById("closeOptions").onclick = () => {
     modal.remove(); 
     overlay.classList.remove("active");
@@ -272,18 +272,20 @@ function openProductOptions(product) {
   
   document.getElementById("optionsForm").onsubmit = function(e) {
     e.preventDefault();
+    const form = e.target;
     const submitBtn = document.getElementById("submitOptions");
-    submitBtn.disabled = true; // Désactive le bouton pendant le traitement
+    submitBtn.disabled = true;
     
-    const size = document.getElementById("cartSize").value;
-    const color = document.getElementById("cartColor").value;
-    const qty = parseInt(document.getElementById("cartQty").value)||1;
+    // Récupération correcte des valeurs
+    const size = form.elements.size.value;
+    const color = form.elements.color.value;
+    const qty = parseInt(form.elements.qty.value) || 1;
     
     addProductToCart(product, size, color, qty);
     
     modal.remove();
     overlay.classList.remove("active");
-    isAddingToCart = false; // Réinitialise le flag
+    isAddingToCart = false;
   };
 }
 
@@ -307,7 +309,6 @@ function addProductToCart(product, size, color, quantity) {
   }
   
   saveCart();
-  updateCartUI();
   
   // Affiche une confirmation d'ajout
   showCartNotification(`${product.name} ajouté au panier!`);
@@ -359,7 +360,7 @@ function updateCartUI() {
         <img src="${item.image}" alt="${item.name}">
         <div class="cart-item-info">
           <div class="cart-item-name">${item.name}</div>
-          <div style="font-size:0.9em;color:#666;">Taille: <b>${item.size}</b>, Couleur: <b>${item.color}</b></div>
+          <div style="font-size:0.9em;color:#666;">Taille: <b>${item.size || "Non spécifiée"}</b>, Couleur: <b>${item.color || "Non spécifiée"}</b></div>
           <div class="cart-item-price">$${item.price.toFixed(2)}</div>
           <div class="quantity-controls">
             <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity - 1})">-</button>
@@ -372,7 +373,13 @@ function updateCartUI() {
         </div>
       </div>
     `).join("");
-    renderPaypalButton(totalPrice);
+    
+    // Gestion PayPal améliorée
+    setTimeout(() => {
+      if (totalPrice > 0) {
+        renderPaypalButton(totalPrice);
+      }
+    }, 300);
   }
 }
 
@@ -385,42 +392,68 @@ window.updateQuantity = function(key, newQuantity) {
     item.quantity = newQuantity;
   }
   saveCart();
-  updateCartUI();
 };
 
 window.removeFromCart = function(key) {
   cart = cart.filter((i) => i.key !== key);
   saveCart();
-  updateCartUI();
 };
 
 function renderPaypalButton(totalPrice) {
-  if (!window.paypal) return;
+  if (!window.paypal) {
+    console.warn("PayPal SDK non chargé");
+    return;
+  }
+  
   const container = document.getElementById("paypal-button-container");
   if (!container) return;
+  
+  // Réinitialiser complètement le conteneur
   container.innerHTML = "";
-  window.paypal.Buttons({
-    style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' },
-    createOrder: function(data, actions) {
-      return actions.order.create({
-        purchase_units: [{
-          amount: { value: totalPrice.toFixed(2) }
-        }]
-      });
-    },
-    onApprove: function(data, actions) {
-      return actions.order.capture().then(function(details) {
-        alert('Paiement réussi, merci ' + details.payer.name.given_name + ' !');
-        cart = [];
-        saveCart();
-        updateCartUI();
-      });
-    },
-    onError: function(err) {
-      alert("Une erreur est survenue avec PayPal.");
-      console.log(err);
-    }
-  }).render('#paypal-button-container');
+  
+  // Vérifier que le montant est valide
+  if (typeof totalPrice !== 'number' || totalPrice <= 0) {
+    console.error("Montant PayPal invalide:", totalPrice);
+    return;
+  }
+
+  try {
+    window.paypal.Buttons({
+      style: { 
+        layout: 'vertical', 
+        color: 'gold', 
+        shape: 'rect', 
+        label: 'paypal' 
+      },
+      createOrder: function(data, actions) {
+        return actions.order.create({
+          purchase_units: [{
+            amount: { 
+              value: totalPrice.toFixed(2),
+              currency_code: "USD"
+            }
+          }]
+        });
+      },
+      onApprove: function(data, actions) {
+        return actions.order.capture().then(function(details) {
+          alert('Paiement réussi, merci ' + details.payer.name.given_name + ' !');
+          cart = [];
+          saveCart();
+        });
+      },
+      onError: function(err) {
+        console.error("Erreur PayPal:", err);
+        // Réessayer après un délai
+        setTimeout(() => renderPaypalButton(totalPrice), 1000);
+      },
+      onCancel: function(data) {
+        console.log("Paiement annulé");
+      }
+    }).render('#paypal-button-container');
+  } catch (e) {
+    console.error("Erreur initialisation PayPal:", e);
+  }
 }
 
 function filterByCategory(category) {
