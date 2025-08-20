@@ -56,8 +56,9 @@
                     <h1 id="userNameDisplay">MarcShop</h1>
                 </div>
                 <div class="search-bar">
-                    <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Rechercher des produits...">
+                    <i class="fas fa-search" id="searchIcon"></i>
+                    <input type="text" id="searchInput" placeholder="Rechercher des produits...">
+                    <i class="fas fa-times clear-search" id="clearSearch" style="display: none; cursor: pointer;"></i>
                 </div>
                 <div class="header-actions">
                     <button class="share-btn" id="shareBtn">
@@ -91,10 +92,12 @@
         <div class="container">
             <div class="categories">
                 <button class="category-btn active" data-category="all">Tous</button>
-                <button class="category-btn" data-category="electronics">Électronique</button>
                 <button class="category-btn" data-category="clothing">Vêtements</button>
+                <button class="category-btn" data-category="shoes">Chaussures</button>
+                <button class="category-btn" data-category="electronics">Électronique</button>
                 <button class="category-btn" data-category="home">Maison</button>
                 <button class="category-btn" data-category="sports">Sports</button>
+                <button class="category-btn" data-category="beauty">Beauté</button>
             </div>
         </div>
     </nav>
@@ -141,6 +144,7 @@
         <span class="arrow prev">&#10094;</span>
         <span class="arrow next">&#10095;</span>
         <img class="lightbox-content" id="lightboxImage">
+        <div id="lightboxDescription" class="lightbox-description"></div>
     </div>
 
     <!-- PayPal SDK -->
