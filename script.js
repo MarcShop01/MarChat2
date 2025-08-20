@@ -3,14 +3,28 @@ const db = window.firebaseDB;
 
 let currentUser = null;
 let products = [];
+let allProducts = [];
+let filteredProducts = [];
 let cart = [];
 let users = [];
 let currentProductImages = [];
 let currentImageIndex = 0;
 let isAddingToCart = false;
+let searchTerm = '';
+let currentCategory = 'all';
 
-const SIZES = ["XS", "S", "M", "L", "XL"];
-const COLORS = ["Blanc", "Noir", "Rouge", "Bleu", "Vert", "Jaune"];
+// Options par catégorie
+const SIZE_OPTIONS = {
+  clothing: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+  shoes: ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46"],
+  electronics: ["Standard", "Petit", "Moyen", "Grand", "Extra Large"],
+  home: ["Petit", "Moyen", "Grand", "Personnalisé"],
+  sports: ["XS", "S", "M", "L", "XL", "XXL"],
+  beauty: ["100ml", "200ml", "250ml", "500ml", "1L"],
+  default: ["Unique", "Standard", "Personnalisé"]
+};
+
+const COLORS = ["Blanc", "Noir", "Rouge", "Bleu", "Vert", "Jaune", "Rose", "Violet", "Orange", "Gris", "Marron", "Beige"];
 
 document.addEventListener("DOMContentLoaded", () => {
   loadFirestoreProducts();
@@ -26,12 +40,25 @@ document.addEventListener("DOMContentLoaded", () => {
 function loadFirestoreProducts() {
   const productsCol = collection(db, "products");
   onSnapshot(productsCol, (snapshot) => {
-    products = snapshot.docs.map(doc => ({
+    allProducts = snapshot.docs.map(doc => ({
       ...doc.data(),
       id: doc.id
     }));
-    renderProducts();
+    
+    // Mélanger aléatoirement les produits
+    products = shuffleArray([...allProducts]);
+    
+    // Appliquer les filtres actuels (recherche et catégorie)
+    applyFilters();
   });
+}
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
 }
 
 function loadFirestoreUsers() {
@@ -51,7 +78,7 @@ function loadCart() {
   } catch (e) {
     cart = [];
   }
-  updateCartUI(); // Mettre à jour l'UI immédiatement après chargement
+  updateCartUI();
 }
 
 function saveCart() {
@@ -59,7 +86,7 @@ function saveCart() {
   if (currentUser) {
     localStorage.setItem("marcshop-current-user", JSON.stringify(currentUser));
   }
-  updateCartUI(); // Mettre à jour l'UI après chaque sauvegarde
+  updateCartUI();
 }
 
 function checkUserRegistration() {
@@ -90,6 +117,7 @@ function setupEventListeners() {
 
   document.querySelectorAll(".category-btn").forEach((btn) => {
     btn.addEventListener("click", function () {
+      currentCategory = this.dataset.category;
       filterByCategory(this.dataset.category);
     });
   });
@@ -97,6 +125,47 @@ function setupEventListeners() {
   document.getElementById("overlay").addEventListener("click", () => {
     closeAllPanels();
   });
+  
+  // Recherche de produits
+  const searchInput = document.getElementById("searchInput");
+  const clearSearch = document.getElementById("clearSearch");
+  const searchIcon = document.getElementById("searchIcon");
+  
+  searchInput.addEventListener("input", (e) => {
+    searchTerm = e.target.value.toLowerCase().trim();
+    clearSearch.style.display = searchTerm ? 'block' : 'none';
+    applyFilters();
+  });
+  
+  clearSearch.addEventListener("click", () => {
+    searchInput.value = '';
+    searchTerm = '';
+    clearSearch.style.display = 'none';
+    applyFilters();
+  });
+  
+  searchIcon.addEventListener("click", () => {
+    applyFilters();
+  });
+}
+
+function applyFilters() {
+  // Filtrer d'abord par catégorie
+  if (currentCategory === 'all') {
+    filteredProducts = [...products];
+  } else {
+    filteredProducts = products.filter(product => product.category === currentCategory);
+  }
+  
+  // Puis filtrer par terme de recherche
+  if (searchTerm) {
+    filteredProducts = filteredProducts.filter(product => 
+      product.name.toLowerCase().includes(searchTerm) ||
+      (product.description && product.description.toLowerCase().includes(searchTerm))
+    );
+  }
+  
+  renderProducts();
 }
 
 function setupLightbox() {
@@ -125,7 +194,21 @@ function openLightbox(productId, imgIndex = 0) {
   currentProductImages = product.images;
   currentImageIndex = imgIndex;
   const lightboxImg = document.getElementById("lightboxImage");
+  const descriptionDiv = document.getElementById("lightboxDescription");
+  
   lightboxImg.src = currentProductImages[currentImageIndex];
+  
+  // Afficher la description du produit si elle existe
+  if (product.description) {
+    descriptionDiv.innerHTML = `
+      <h3>${product.name}</h3>
+      <p>${product.description}</p>
+    `;
+    descriptionDiv.style.display = 'block';
+  } else {
+    descriptionDiv.style.display = 'none';
+  }
+  
   document.getElementById("productLightbox").style.display = "block";
   document.getElementById("overlay").classList.add("active");
 }
@@ -180,19 +263,18 @@ function showUserProfile() {
 
 function renderProducts() {
   const grid = document.getElementById("productsGrid");
-  const sortedProducts = [...products].sort((a, b) => 
-    new Date(b.createdAt) - new Date(a.createdAt)
-  );
-  if (sortedProducts.length === 0) {
+  
+  if (filteredProducts.length === 0) {
     grid.innerHTML = `
       <div class="no-products">
-        <h3>Aucun produit disponible</h3>
-        <p>Les produits seront affichés ici une fois ajoutés par l'administrateur.</p>
+        <h3>Aucun produit trouvé</h3>
+        <p>Aucun produit ne correspond à votre recherche.</p>
       </div>
     `;
     return;
   }
-  grid.innerHTML = sortedProducts.map(product => {
+  
+  grid.innerHTML = filteredProducts.map(product => {
     const discount = product.originalPrice > 0 ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
     const rating = 4.0 + Math.random() * 1.0;
     const reviews = Math.floor(Math.random() * 1000) + 100;
@@ -202,7 +284,7 @@ function renderProducts() {
         <div class="product-image" onclick="openLightbox('${product.id}')">
           <img src="${firstImage}" alt="${product.name}" class="product-img">
           <div class="product-badge">NOUVEAU</div>
-          <div class="discount-badge">-${discount}%</div>
+          ${discount > 0 ? `<div class="discount-badge">-${discount}%</div>` : ''}
         </div>
         <div class="product-info">
           <div class="product-name">${product.name}</div>
@@ -212,7 +294,7 @@ function renderProducts() {
           </div>
           <div class="product-price">
             <span class="current-price">$${product.price.toFixed(2)}</span>
-            <span class="original-price">$${product.originalPrice.toFixed(2)}</span>
+            ${product.originalPrice > 0 ? `<span class="original-price">$${product.originalPrice.toFixed(2)}</span>` : ''}
           </div>
           <button class="add-to-cart" onclick="addToCart('${product.id}'); event.stopPropagation()">
             <i class="fas fa-shopping-cart"></i> Ajouter
@@ -236,6 +318,11 @@ window.addToCart = function(productId) {
 function openProductOptions(product) {
   const overlay = document.getElementById("overlay");
   overlay.classList.add("active");
+  
+  // Déterminer les options de taille en fonction de la catégorie
+  const category = product.category || 'default';
+  const sizeOptions = SIZE_OPTIONS[category] || SIZE_OPTIONS.default;
+  
   let modal = document.createElement("div");
   modal.className = "modal";
   modal.style.display = "flex";
@@ -245,15 +332,15 @@ function openProductOptions(product) {
       <img src="${product.images[0]}" style="max-width:120px;max-height:120px;border-radius:6px;">
       <p><strong>${product.name}</strong></p>
       <form id="optionsForm">
-        <label for="cartSize">Taille :</label>
+        <label for="cartSize">Taille/Modèle :</label>
         <select id="cartSize" name="size" required>
           <option value="">Sélectionner</option>
-          ${SIZES.map(s=>`<option value="${s}">${s}</option>`).join("")}
+          ${sizeOptions.map(s => `<option value="${s}">${s}</option>`).join("")}
         </select>
         <label for="cartColor" style="margin-top:1rem;">Couleur :</label>
         <select id="cartColor" name="color" required>
           <option value="">Sélectionner</option>
-          ${COLORS.map(c=>`<option value="${c}">${c}</option>`).join("")}
+          ${COLORS.map(c => `<option value="${c}">${c}</option>`).join("")}
         </select>
         <label for="cartQty" style="margin-top:1rem;">Quantité :</label>
         <input type="number" id="cartQty" name="qty" min="1" value="1" style="width:60px;">
@@ -360,7 +447,7 @@ function updateCartUI() {
         <img src="${item.image}" alt="${item.name}">
         <div class="cart-item-info">
           <div class="cart-item-name">${item.name}</div>
-          <div style="font-size:0.9em;color:#666;">Taille: <b>${item.size || "Non spécifiée"}</b>, Couleur: <b>${item.color || "Non spécifiée"}</b></div>
+          <div style="font-size:0.9em;color:#666;">${item.size ? `Taille/Modèle: <b>${item.size}</b>, ` : ''}Couleur: <b>${item.color}</b></div>
           <div class="cart-item-price">$${item.price.toFixed(2)}</div>
           <div class="quantity-controls">
             <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity - 1})">-</button>
@@ -461,15 +548,7 @@ function filterByCategory(category) {
     btn.classList.remove("active");
   });
   document.querySelector(`[data-category="${category}"]`).classList.add("active");
-
-  const productCards = document.querySelectorAll(".product-card");
-  productCards.forEach((card) => {
-    if (category === "all" || card.dataset.category === category) {
-      card.style.display = "block";
-    } else {
-      card.style.display = "none";
-    }
-  });
+  applyFilters();
 }
 
 function toggleCart() {
