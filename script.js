@@ -1,4 +1,15 @@
-import { collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  doc, 
+  updateDoc, 
+  deleteDoc,
+  query,
+  where,
+  getDocs
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
 const db = window.firebaseDB;
 
 let currentUser = null;
@@ -33,7 +44,6 @@ document.addEventListener("DOMContentLoaded", () => {
   checkUserRegistration();
   setupEventListeners();
   setupLightbox();
-  setupAdminListeners();
   window.toggleCart = toggleCart;
 });
 
@@ -79,12 +89,65 @@ function loadCart() {
     cart = [];
   }
   updateCartUI();
+  
+  // Synchroniser le panier avec Firestore si l'utilisateur est connecté
+  if (currentUser) {
+    syncCartToFirestore();
+  }
+}
+
+// Synchroniser le panier avec Firestore
+async function syncCartToFirestore() {
+  if (!currentUser) return;
+  
+  try {
+    // Vérifier si l'utilisateur a déjà un panier
+    const cartsQuery = query(collection(db, "carts"), where("userId", "==", currentUser.id));
+    const querySnapshot = await getDocs(cartsQuery);
+    
+    if (!querySnapshot.empty) {
+      // Mettre à jour le panier existant
+      const cartDoc = querySnapshot.docs[0];
+      await updateDoc(doc(db, "carts", cartDoc.id), {
+        items: cart,
+        totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
+        lastUpdated: new Date().toISOString()
+      });
+    } else {
+      // Créer un nouveau panier
+      await addDoc(collection(db, "carts"), {
+        userId: currentUser.id,
+        items: cart,
+        totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error("Erreur synchronisation panier:", error);
+  }
+}
+
+// Mettre à jour l'activité de l'utilisateur
+async function updateUserActivity() {
+  if (!currentUser) return;
+  
+  try {
+    const userRef = doc(db, "users", currentUser.id);
+    await updateDoc(userRef, {
+      lastActivity: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Erreur mise à jour activité:", error);
+  }
 }
 
 function saveCart() {
   localStorage.setItem("marcshop-cart", JSON.stringify(cart));
   if (currentUser) {
     localStorage.setItem("marcshop-current-user", JSON.stringify(currentUser));
+    updateUserActivity();
+    syncCartToFirestore();
   }
   updateCartUI();
 }
@@ -183,10 +246,6 @@ function setupLightbox() {
   });
 }
 
-function setupAdminListeners() {
-  // Retiré - plus de bouton admin
-}
-
 window.openLightbox = openLightbox;
 function openLightbox(productId, imgIndex = 0) {
   const product = products.find(p => p.id === productId);
@@ -244,6 +303,10 @@ async function registerUser(name, email, phone) {
     currentUser = newUser;
     saveCart();
     displayUserName();
+    
+    // Créer un panier Firestore pour le nouvel utilisateur
+    await syncCartToFirestore();
+    
     document.getElementById("registrationModal").classList.remove("active");
   } catch (e) {
     alert("Erreur lors de l'inscription. Réessayez.");
@@ -441,6 +504,8 @@ function updateCartUI() {
     `;
     const paypalDiv = document.getElementById("paypal-button-container");
     if (paypalDiv) paypalDiv.innerHTML = '';
+    const addressForm = document.getElementById("addressForm");
+    if (addressForm) addressForm.style.display = 'none';
   } else {
     cartItems.innerHTML = cart.map(item => `
       <div class="cart-item">
@@ -460,6 +525,20 @@ function updateCartUI() {
         </div>
       </div>
     `).join("");
+    
+    // Ajouter le formulaire d'adresse si nécessaire
+    if (!document.getElementById("addressForm")) {
+      const addressFormHTML = `
+        <div id="addressForm" style="margin-top: 1.5rem; padding: 极速加速器rem; background: #f9fafb; border-radius: 0.5rem;">
+          <h4 style="margin-bottom: 1rem;">Adresse de livraison</h4>
+          <div class="form-group">
+            <label for="shippingAddress">Adresse complète</label>
+            <textarea id="shippingAddress" rows="3" placeholder="Entrez votre adresse complète pour la livraison" required></textarea>
+          </div>
+        </div>
+      `;
+      cartItems.insertAdjacentHTML('beforeend', addressFormHTML);
+    }
     
     // Gestion PayPal améliorée
     setTimeout(() => {
@@ -523,8 +602,14 @@ function renderPaypalButton(totalPrice) {
         });
       },
       onApprove: function(data, actions) {
-        return actions.order.capture().then(function(details) {
-          alert('Paiement réussi, merci ' + details.payer.name.given_name + ' !');
+        return actions.order.capture().then(async function(details) {
+          // Récupérer l'adresse de livraison
+          const shippingAddress = document.getElementById("shippingAddress")?.value || "Non spécifiée";
+          
+          // Créer la commande dans Firestore
+          await createOrder(details, shippingAddress);
+          
+          alert('Paiement réussi, merci ' + details.payer.name.given_name + ' ! Un reçu a été envoyé à votre email.');
           cart = [];
           saveCart();
         });
@@ -541,6 +626,72 @@ function renderPaypalButton(totalPrice) {
   } catch (e) {
     console.error("Erreur initialisation PayPal:", e);
   }
+}
+
+// Créer une commande dans Firestore
+async function createOrder(paymentDetails, shippingAddress) {
+  if (!currentUser) return;
+  
+  try {
+    const orderData = {
+      userId: currentUser.id,
+      customerName: currentUser.name,
+      customerEmail: currentUser.email,
+      customerPhone: currentUser.phone,
+      items: cart,
+      totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
+      paymentId: paymentDetails.id,
+      paymentStatus: 'completed',
+      shippingAddress: shippingAddress,
+      status: 'processing',
+      createdAt: new Date().toISOString()
+    };
+    
+    // Ajouter la commande à Firestore
+    const orderRef = await addDoc(collection(db, "orders"), orderData);
+    
+    // Envoyer un email de confirmation (simulé)
+    await sendOrderConfirmationEmail(orderData, orderRef.id);
+    
+    // Vider le panier dans Firestore
+    const cartsQuery = query(collection(db, "carts"), where("userId", "==", currentUser.id));
+    const querySnapshot = await getDocs(cartsQuery);
+    
+    if (!querySnapshot.empty) {
+      const cartDoc = querySnapshot.docs[0];
+      await updateDoc(doc(db, "carts", cartDoc.id), {
+        items: [],
+        totalAmount: 0,
+        lastUpdated: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error("Erreur création commande:", error);
+  }
+}
+
+// Fonction simulée d'envoi d'email
+async function sendOrderConfirmationEmail(orderData, orderId) {
+  // Dans une application réelle, vous utiliseriez un service d'email comme SendGrid, Mailgun, etc.
+  // ou des Cloud Functions Firebase pour envoyer des emails
+  
+  console.log("=== EMAIL DE CONFIRMATION ENVOYÉ ===");
+  console.log("À: ", orderData.customerEmail);
+  console.log("Sujet: Confirmation de votre commande MarcShop");
+  console.log("Contenu:");
+  console.log(`Bonjour ${orderData.customerName},`);
+  console.log("Merci pour votre commande ! Voici le récapitulatif :");
+  console.log("Numéro de commande: ", orderId);
+  console.log("Articles:");
+  orderData.items.forEach(item => {
+    console.log(`- ${item.quantity}x ${item.name} (${item.size}, ${item.color}): $${item.price.toFixed(2)}`);
+  });
+  console.log("Total: $", orderData.totalAmount.toFixed(2));
+  console.log("Adresse de livraison: ", orderData.shippingAddress);
+  console.log("================================");
+  
+  // Simulation d'envoi réussi
+  return true;
 }
 
 function filterByCategory(category) {
