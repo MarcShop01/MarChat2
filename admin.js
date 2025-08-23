@@ -1,10 +1,12 @@
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, updateDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 const db = window.firebaseDB; // défini dans admin.html
 
 const ADMIN_PASSWORD = "marcshop2024";
 let products = [];
 let users = [];
+let orders = [];
+let carts = [];
 let isLoggedIn = false;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -12,6 +14,8 @@ document.addEventListener("DOMContentLoaded", () => {
   checkAdminSession();
   listenProducts();
   listenUsers();
+  listenOrders();
+  listenCarts();
 });
 
 function listenProducts() {
@@ -25,6 +29,20 @@ function listenUsers() {
   onSnapshot(collection(db, "users"), (snapshot) => {
     users = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     renderUsersList();
+    updateStats();
+  });
+}
+function listenOrders() {
+  onSnapshot(collection(db, "orders"), (snapshot) => {
+    orders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    renderOrdersList();
+    updateStats();
+  });
+}
+function listenCarts() {
+  onSnapshot(collection(db, "carts"), (snapshot) => {
+    carts = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    renderCartsList();
     updateStats();
   });
 }
@@ -82,6 +100,8 @@ function showDashboard() {
   updateStats();
   renderProductsList();
   renderUsersList();
+  renderOrdersList();
+  renderCartsList();
 }
 window.showSection = function(sectionName) {
   document.querySelectorAll(".sidebar-btn").forEach((btn) => btn.classList.remove("active"));
@@ -91,6 +111,8 @@ window.showSection = function(sectionName) {
   if (sectionName === "dashboard") updateStats();
   if (sectionName === "products") renderProductsList();
   if (sectionName === "users") renderUsersList();
+  if (sectionName === "orders") renderOrdersList();
+  if (sectionName === "carts") renderCartsList();
 }
 
 async function addProduct() {
@@ -198,6 +220,102 @@ function renderUsersList() {
     `;
 }
 
+function renderOrdersList() {
+  const ordersList = document.getElementById("ordersList");
+  if (!orders || orders.length === 0) {
+    ordersList.innerHTML = "<p>Aucune commande passée.</p>";
+    return;
+  }
+  
+  const sortedOrders = [...orders].sort((a, b) => 
+    new Date(b.createdAt || b.orderDate) - new Date(a.createdAt || a.orderDate)
+  );
+  
+  ordersList.innerHTML = `
+        <h3>Commandes (${sortedOrders.length})</h3>
+        <div style="display: grid; gap: 1rem;">
+            ${sortedOrders
+              .map((order) => {
+                const orderDate = order.createdAt || order.orderDate;
+                return `
+                    <div class="order-item">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <strong>Commande #${order.id.substring(0, 8)}</strong>
+                            <span style="color: #10b981; font-weight: bold;">$${order.totalAmount?.toFixed(2) || '0.00'}</span>
+                        </div>
+                        <div style="margin-bottom: 0.5rem;">
+                            <strong>Client:</strong> ${order.customerName} (${order.customerEmail})<br>
+                            <strong>Téléphone:</strong> ${order.customerPhone}<br>
+                            <strong>Adresse:</strong> ${order.shippingAddress || 'Non spécifiée'}
+                        </div>
+                        <div>
+                            <strong>Produits:</strong>
+                            <ul style="margin-top: 0.5rem;">
+                                ${order.items?.map(item => `
+                                    <li>${item.quantity}x ${item.name} (${item.size}, ${item.color}) - $${item.price.toFixed(2)}</li>
+                                `).join('') || 'Aucun détail produit'}
+                            </ul>
+                        </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.875rem; color: #6b7280;">
+                            Passée le: ${new Date(orderDate).toLocaleDateString()} à ${new Date(orderDate).toLocaleTimeString()}
+                        </div>
+                    </div>
+                `;
+              })
+              .join("")}
+        </div>
+    `;
+}
+
+function renderCartsList() {
+  const cartsList = document.getElementById("cartsList");
+  if (!carts || carts.length === 0) {
+    cartsList.innerHTML = "<p>Aucun panier actif.</p>";
+    return;
+  }
+  
+  // Filtrer les paniers qui ne sont pas vides
+  const activeCarts = carts.filter(cart => cart.items && cart.items.length > 0);
+  
+  cartsList.innerHTML = `
+        <h3>Paniers actifs (${activeCarts.length})</h3>
+        <div style="display: grid; gap: 1rem;">
+            ${activeCarts
+              .map((cart) => {
+                const user = users.find(u => u.id === cart.userId);
+                const userName = user ? user.name : 'Utilisateur inconnu';
+                const userEmail = user ? user.email : 'Email inconnu';
+                const lastUpdated = cart.lastUpdated ? new Date(cart.lastUpdated) : new Date();
+                
+                return `
+                    <div class="cart-item-admin">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <strong>${userName}</strong>
+                            <span style="color: #10b981; font-weight: bold;">$${cart.totalAmount?.toFixed(2) || '0.00'}</span>
+                        </div>
+                        <div style="margin-bottom: 0.5rem;">
+                            <strong>Email:</strong> ${userEmail}<br>
+                            <strong>Articles:</strong> ${cart.items.length}
+                        </div>
+                        <div>
+                            <strong>Produits:</strong>
+                            <ul style="margin-top: 0.5rem;">
+                                ${cart.items.map(item => `
+                                    <li>${item.quantity}x ${item.name} (${item.size}, ${item.color}) - $${item.price.toFixed(2)}</li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.875rem; color: #6b7280;">
+                            Dernière mise à jour: ${lastUpdated.toLocaleDateString()} à ${lastUpdated.toLocaleTimeString()}
+                        </div>
+                    </div>
+                `;
+              })
+              .join("")}
+        </div>
+    `;
+}
+
 function isUserActive(user) {
   if (!user.lastActivity) return false;
   const lastActivity = new Date(user.lastActivity);
@@ -210,4 +328,8 @@ function updateStats() {
   document.getElementById("totalProducts").textContent = products.length;
   document.getElementById("totalUsers").textContent = users.length;
   document.getElementById("activeUsers").textContent = users.filter(isUserActive).length;
+  
+  // Compter les paniers actifs (non vides)
+  const activeCartsCount = carts.filter(cart => cart.items && cart.items.length > 0).length;
+  document.getElementById("activeCarts").textContent = activeCartsCount;
 }
