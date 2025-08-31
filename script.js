@@ -732,4 +732,173 @@ function shareWebsite() {
       alert("Lien copié dans le presse-papiers!");
     });
   }
+// ==============================================
+// FONCTIONS POUR LE GÉNÉRATEUR DE VIDÉOS PUBLICITAIRES
+// ==============================================
+
+// Ouvrir le générateur de vidéo pour un produit
+function openVideoGenerator(productId) {
+    const product = products.find(p => p.id === productId);
+    if (!product) {
+        console.error("Produit non trouvé:", productId);
+        return;
+    }
+    
+    // Remplir les informations du produit
+    document.getElementById('videoProductId').value = productId;
+    
+    // Afficher le modal
+    document.getElementById('videoGeneratorModal').classList.add('active');
+    document.getElementById('overlay').classList.add('active');
+    
+    // Réinitialiser l'aperçu
+    resetVideoPreview();
+    
+    // Désactiver les boutons de téléchargement et publication
+    document.getElementById('downloadVideoBtn').disabled = true;
+    document.getElementById('publishVideoBtn').disabled = true;
+}
+
+// Fermer le générateur de vidéo
+function closeVideoGenerator() {
+    document.getElementById('videoGeneratorModal').classList.remove('active');
+    document.getElementById('overlay').classList.remove('active');
+}
+
+// Réinitialiser l'aperçu vidéo
+function resetVideoPreview() {
+    const videoPreview = document.getElementById('videoPreview');
+    videoPreview.innerHTML = `
+        <div class="video-placeholder">
+            <i class="fas fa-film" style="font-size: 48px; color: #6b7280;"></i>
+            <p>La prévisualisation apparaîtra ici</p>
+        </div>
+    `;
+}
+
+// Afficher la vidéo générée
+function showGeneratedVideo(product, style, cta) {
+    const videoPreview = document.getElementById('videoPreview');
+    
+    videoPreview.innerHTML = `
+        <div class="video-template ${style}">
+            <div class="video-title">${product.name}</div>
+            <div class="video-description">${product.description || 'Découvrez ce produit exceptionnel'}</div>
+            <div class="video-price">${product.price.toFixed(2)} €</div>
+            <div class="video-cta">${cta}</div>
+        </div>
+    `;
+}
+
+// Ajouter le bouton "Générer une vidéo" à chaque produit
+function addVideoButtonToProducts() {
+    // Cette fonction sera appelée après le rendu des produits
+    setTimeout(() => {
+        const productCards = document.querySelectorAll('.product-card');
+        
+        productCards.forEach(card => {
+            // Vérifier si le bouton existe déjà
+            if (card.querySelector('.generate-video-btn')) {
+                return;
+            }
+            
+            const addToCartButton = card.querySelector('.add-to-cart');
+            if (!addToCartButton) return;
+            
+            // Extraire l'ID du produit de l'attribut onclick
+            const onclickAttr = addToCartButton.getAttribute('onclick');
+            if (!onclickAttr) return;
+            
+            const productId = onclickAttr.split("'")[1];
+            if (!productId) return;
+            
+            const button = document.createElement('button');
+            button.className = 'generate-video-btn';
+            button.innerHTML = '<i class="fas fa-video"></i> Générer une vidéo';
+            button.onclick = (e) => {
+                e.stopPropagation();
+                openVideoGenerator(productId);
+            };
+            
+            const productInfo = card.querySelector('.product-info');
+            if (productInfo) {
+                productInfo.appendChild(button);
+            }
+        });
+    }, 500);
+}
+
+// Surcharger la fonction renderProducts pour inclure le bouton de génération de vidéo
+const originalRenderProducts = window.renderProducts;
+window.renderProducts = function() {
+    const result = originalRenderProducts.apply(this, arguments);
+    addVideoButtonToProducts();
+    return result;
+};
+
+// Initialiser le générateur de vidéos
+function initVideoGenerator() {
+    // Écouteur pour le bouton de génération
+    document.getElementById('generateVideoBtn').addEventListener('click', function() {
+        const productId = document.getElementById('videoProductId').value;
+        const product = products.find(p => p.id === productId);
+        if (!product) {
+            alert("Erreur: Produit non trouvé");
+            return;
+        }
+        
+        const videoStyle = document.getElementById('videoStyle').value;
+        const videoMusic = document.getElementById('videoMusic').value;
+        const videoVoiceOver = document.getElementById('videoVoiceOver').value;
+        const videoDuration = document.getElementById('videoDuration').value;
+        const videoCTA = document.getElementById('videoCTA').value || "Achetez maintenant!";
+        
+        // Afficher la barre de progression
+        const progressBar = document.getElementById('videoProgressBar');
+        const progress = document.getElementById('videoProgress');
+        progressBar.style.display = 'block';
+        progress.style.width = '0%';
+        
+        // Désactiver le bouton de génération pendant le processus
+        this.disabled = true;
+        
+        // Simuler la génération de la vidéo
+        let progressValue = 0;
+        const interval = setInterval(() => {
+            progressValue += 5;
+            progress.style.width = `${progressValue}%`;
+            
+            if (progressValue >= 100) {
+                clearInterval(interval);
+                setTimeout(() => {
+                    progressBar.style.display = 'none';
+                    showGeneratedVideo(product, videoStyle, videoCTA);
+                    
+                    // Activer les boutons de téléchargement et publication
+                    document.getElementById('downloadVideoBtn').disabled = false;
+                    document.getElementById('publishVideoBtn').disabled = false;
+                    
+                    // Réactiver le bouton de génération
+                    this.disabled = false;
+                }, 300);
+            }
+        }, 100);
+    });
+    
+    // Écouteur pour le bouton de téléchargement
+    document.getElementById('downloadVideoBtn').addEventListener('click', function() {
+        alert('Fonctionnalité de téléchargement en cours de développement. Dans une version complète, cette fonction permettrait de télécharger la vidéo générée.');
+    });
+    
+    // Écouteur pour le bouton de publication
+    document.getElementById('publishVideoBtn').addEventListener('click', function() {
+        alert('Fonctionnalité de publication en cours de développement. Dans une version complète, cette fonction permettrait de publier la vidéo sur les réseaux sociaux.');
+    });
+}
+
+// Initialiser le générateur de vidéos lorsque le DOM est chargé
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVideoGenerator);
+} else {
+    initVideoGenerator();
 }
