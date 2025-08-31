@@ -45,6 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   setupLightbox();
   window.toggleCart = toggleCart;
+  initVideoGenerator(); // Initialiser le générateur de vidéos
 });
 
 function loadFirestoreProducts() {
@@ -362,6 +363,9 @@ function renderProducts() {
           <button class="add-to-cart" onclick="addToCart('${product.id}'); event.stopPropagation()">
             <i class="fas fa-shopping-cart"></i> Ajouter
           </button>
+          <button class="generate-video-btn" onclick="openVideoGenerator('${product.id}'); event.stopPropagation()">
+            <i class="fas fa-video"></i> Générer une vidéo
+          </button>
         </div>
       </div>
     `;
@@ -529,7 +533,7 @@ function updateCartUI() {
     // Ajouter le formulaire d'adresse si nécessaire
     if (!document.getElementById("addressForm")) {
       const addressFormHTML = `
-        <div id="addressForm" style="margin-top: 1.5rem; padding: 极速加速器rem; background: #f9fafb; border-radius: 0.5rem;">
+        <div id="addressForm" style="margin-top: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 0.5rem;">
           <h4 style="margin-bottom: 1rem;">Adresse de livraison</h4>
           <div class="form-group">
             <label for="shippingAddress">Adresse complète</label>
@@ -713,6 +717,7 @@ function closeAllPanels() {
   document.getElementById("cartSidebar").classList.remove("active");
   document.getElementById("overlay").classList.remove("active");
   closeLightbox();
+  closeVideoGenerator();
 }
 
 function switchTab(tabName) {
@@ -732,6 +737,8 @@ function shareWebsite() {
       alert("Lien copié dans le presse-papiers!");
     });
   }
+}
+
 // ==============================================
 // FONCTIONS POUR LE GÉNÉRATEUR DE VIDÉOS PUBLICITAIRES
 // ==============================================
@@ -789,52 +796,6 @@ function showGeneratedVideo(product, style, cta) {
         </div>
     `;
 }
-
-// Ajouter le bouton "Générer une vidéo" à chaque produit
-function addVideoButtonToProducts() {
-    // Cette fonction sera appelée après le rendu des produits
-    setTimeout(() => {
-        const productCards = document.querySelectorAll('.product-card');
-        
-        productCards.forEach(card => {
-            // Vérifier si le bouton existe déjà
-            if (card.querySelector('.generate-video-btn')) {
-                return;
-            }
-            
-            const addToCartButton = card.querySelector('.add-to-cart');
-            if (!addToCartButton) return;
-            
-            // Extraire l'ID du produit de l'attribut onclick
-            const onclickAttr = addToCartButton.getAttribute('onclick');
-            if (!onclickAttr) return;
-            
-            const productId = onclickAttr.split("'")[1];
-            if (!productId) return;
-            
-            const button = document.createElement('button');
-            button.className = 'generate-video-btn';
-            button.innerHTML = '<i class="fas fa-video"></i> Générer une vidéo';
-            button.onclick = (e) => {
-                e.stopPropagation();
-                openVideoGenerator(productId);
-            };
-            
-            const productInfo = card.querySelector('.product-info');
-            if (productInfo) {
-                productInfo.appendChild(button);
-            }
-        });
-    }, 500);
-}
-
-// Surcharger la fonction renderProducts pour inclure le bouton de génération de vidéo
-const originalRenderProducts = window.renderProducts;
-window.renderProducts = function() {
-    const result = originalRenderProducts.apply(this, arguments);
-    addVideoButtonToProducts();
-    return result;
-};
 
 // Initialiser le générateur de vidéos
 function initVideoGenerator() {
@@ -894,11 +855,4 @@ function initVideoGenerator() {
     document.getElementById('publishVideoBtn').addEventListener('click', function() {
         alert('Fonctionnalité de publication en cours de développement. Dans une version complète, cette fonction permettrait de publier la vidéo sur les réseaux sociaux.');
     });
-}
-
-// Initialiser le générateur de vidéos lorsque le DOM est chargé
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initVideoGenerator);
-} else {
-    initVideoGenerator();
 }
