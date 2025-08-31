@@ -147,5 +147,96 @@
     <!-- PayPal SDK -->
     <script src="https://www.paypal.com/sdk/js?client-id=AX4iV51P3BZMi2XMsaCvCWpHRKzVLsXSBTpCiJg16aZ62_ToUcO3Y-KLtA3v_0rM_LHfM2W7dmGbsOZF&currency=USD"></script>
     <script type="module" src="script.js"></script>
-</body>
+</body><!-- Modal de génération de vidéo publicitaire -->
+<div id="videoGeneratorModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <h2 style="color: #4361ee; text-align: center; margin-bottom: 20px;">
+            <i class="fas fa-video"></i> Générateur de Vidéo Publicitaire
+        </h2>
+        
+        <div class="video-generator-container">
+            <div class="video-preview-section">
+                <h3>Aperçu de la vidéo</h3>
+                <div id="videoPreview" class="video-preview">
+                    <div class="video-placeholder">
+                        <i class="fas fa-film" style="font-size: 48px; color: #6b7280;"></i>
+                        <p>La prévisualisation apparaîtra ici</p>
+                    </div>
+                </div>
+                <div class="progress-bar" style="margin: 20px 0; display: none;" id="videoProgressBar">
+                    <div class="progress" id="videoProgress"></div>
+                </div>
+            </div>
+            
+            <div class="video-options-section">
+                <h3>Options de la vidéo</h3>
+                <form id="videoOptionsForm">
+                    <input type="hidden" id="videoProductId">
+                    
+                    <div class="form-group">
+                        <label for="videoStyle">Style de vidéo</label>
+                        <select id="videoStyle" class="form-control">
+                            <option value="dynamic">Dynamique et énergique</option>
+                            <option value="elegant">Élégant et sophistiqué</option>
+                            <option value="minimalist">Minimaliste et moderne</option>
+                            <option value="fun">Ludique et amusant</option>
+                            <option value="professional">Professionnel et corporate</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="videoMusic">Musique d'ambiance</label>
+                        <select id="videoMusic" class="form-control">
+                            <option value="upbeat">Optimiste et énergique</option>
+                            <option value="corporate">Corporate et professionnelle</option>
+                            <option value="relaxing">Détendue et apaisante</option>
+                            <option value="dramatic">Dramatique et épique</option>
+                            <option value="none">Aucune musique</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="videoVoiceOver">Voix off</label>
+                        <select id="videoVoiceOver" class="form-control">
+                            <option value="male">Voix masculine</option>
+                            <option value="female">Voix féminine</option>
+                            <option value="none">Aucune voix off</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="videoDuration">Durée de la vidéo</label>
+                        <select id="videoDuration" class="form-control">
+                            <option value="15">15 secondes</option>
+                            <option value="30">30 secondes</option>
+                            <option value="45">45 secondes</option>
+                            <option value="60">60 secondes</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="videoCTA">Appel à l'action</label>
+                        <input type="text" id="videoCTA" class="form-control" placeholder="Ex: Achetez maintenant !">
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" id="generateVideoBtn" class="btn btn-primary">
+                            <i class="fas fa-magic"></i> Générer la vidéo
+                        </button>
+                        <button type="button" id="downloadVideoBtn" class="btn btn-success" disabled>
+                            <i class="fas fa-download"></i> Télécharger
+                        </button>
+                        <button type="button" id="publishVideoBtn" class="btn btn-accent" disabled>
+                            <i class="fas fa-share"></i> Publier
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <button type="button" class="close-modal-btn" onclick="closeVideoGenerator()">
+            <i class="fas fa-times"></i> Fermer
+        </button>
+    </div>
+</div>
 </html>
