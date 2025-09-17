@@ -9,24 +9,36 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Firebase SDK -->
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-      import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-      window.firebaseConfig = {
-        apiKey: "AIzaSyC_krW6QcyTS6JZNJf-_7YAc_491mCWYaQ",
-        authDomain: "marchat-e4d21.firebaseapp.com",
-        projectId: "marchat-e4d21",
-        storageBucket: "marchat-e4d21.appspot.com",
-        messagingSenderId: "211043298263",
-        appId: "1:211043298263:web:dcf751d299aa4360d83992",
-        measurementId: "G-CZHXLDZTBW"
+      // Import des fonctions Firebase
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+      import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+      
+      // Configuration Firebase
+      const firebaseConfig = {
+        apiKey: "AIzaSyBbWrhfvhFU7rxUqcwaXa0FF2C-f7Ti3Sk",
+        authDomain: "marcshop-3a594.firebaseapp.com",
+        databaseURL: "https://marcshop-3a594-default-rtdb.firebaseio.com",
+        projectId: "marcshop-3a594",
+        storageBucket: "marcshop-3a594.firebasestorage.app",
+        messagingSenderId: "330349520113",
+        appId: "1:330349520113:web:24dcf3869c616e14b8f550"
       };
-      window.firebaseApp = initializeApp(window.firebaseConfig);
-      window.firebaseDB = getFirestore(window.firebaseApp);
+      
+      // Initialisation Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const auth = getAuth(app);
+      
+      // Exposition des variables globales
+      window.firebaseApp = app;
+      window.firebaseDB = db;
+      window.firebaseAuth = auth;
     </script>
 </head>
 <body>
     <!-- Modal d'inscription -->
-    <div id="registrationModal" class="modal">
+    <div id="registrationModal" class="modal active">
         <div class="modal-content">
             <h2>Bienvenue sur MarcShop! 🛍️</h2>
             <p>Pour accéder à notre boutique, veuillez entrer vos informations</p>
@@ -67,7 +79,7 @@
                     <button class="user-btn" id="profileBtn">
                         <i class="fas fa-user"></i>
                     </button>
-                    <button class="cart-btn" onclick="toggleCart()">
+                    <button class="cart-btn" id="cartBtn">
                         <i class="fas fa-shopping-cart"></i>
                         <span id="cartCount" class="cart-count">0</span>
                     </button>
@@ -92,10 +104,9 @@
             <div class="categories">
                 <button class="category-btn active" data-category="all">Tous</button>
                 <button class="category-btn" data-category="clothing">Vêtements</button>
-                <button class="category-btn" data-category="shoes">Chaussures</button>
                 <button class="category-btn" data-category="electronics">Électronique</button>
-                <button class="category-btn" data-category="home">Maison</button>
-                <button class="category-btn" data-category="sports">Sports</button>
+                <button class="category-btn" data-category="hair">Cheveux</button>
+                <button class="category-btn" data-category="shoes">Chaussures</button>
                 <button class="category-btn" data-category="beauty">Beauté</button>
             </div>
         </div>
@@ -117,13 +128,17 @@
     <div id="cartSidebar" class="cart-sidebar">
         <div class="cart-header">
             <h3>Mon Panier</h3>
-            <button onclick="toggleCart()" class="close-btn">
+            <button class="close-btn" id="closeCartBtn">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <div id="cartItems" class="cart-items"></div>
-        <div style="margin:1.5rem 0;">
+        <div style="margin:1.5rem 0; padding: 0 1rem;">
             <div id="paypal-button-container"></div>
+            <div style="text-align: center; margin: 1rem 0; color: #6b7280;">Ou</div>
+            <button id="natcash-payment-btn" style="width: 100%; background: #0070ba; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-mobile-alt"></i> Payer avec NatCash
+            </button>
         </div>
         <div class="cart-footer">
             <div class="cart-total">
@@ -144,8 +159,76 @@
         <div id="lightboxDescription" class="lightbox-description"></div>
     </div>
 
+    <!-- Modal de paiement NatCash -->
+    <div id="natcashModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <h2 style="color: #0070ba; text-align: center;">
+                <i class="fas fa-mobile-alt"></i> Paiement par NatCash
+            </h2>
+            
+            <div class="amount-display" style="background: #f0fdf4; padding: 1rem; border-radius: 0.5rem; text-align: center; margin: 1rem 0; border-left: 4px solid #10b981;">
+                <p>Montant à payer:</p>
+                <h3 id="natcashAmount">0.00 €</h3>
+            </div>
+            
+            <div class="instructions" style="background: #fffbeb; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #d97706; margin-bottom: 0.5rem;">Instructions de paiement</h3>
+                <ol style="margin-left: 1.5rem;">
+                    <li>Ouvrez l'application NatCash sur votre téléphone</li>
+                    <li>Effectuez un transfert vers le numéro: <strong id="natcashBusinessNumber">50942557123</strong></li>
+                    <li>Entrez votre numéro NatCash et l'ID de transaction ci-dessous</li>
+                    <li>Cliquez sur "Confirmer le paiement"</li>
+                    <li>Le montant sera automatiquement transféré vers notre compte PayPal</li>
+                </ol>
+            </div>
+            
+            <form id="natcashForm">
+                <div class="form-group">
+                    <label for="natcashPhone">Votre numéro NatCash</label>
+                    <input type="tel" id="natcashPhone" required placeholder="Votre numéro NatCash">
+                </div>
+                
+                <div class="form-group">
+                    <label for="natcashTransaction">ID de transaction NatCash (optionnel)</label>
+                    <input type="text" id="natcashTransaction" placeholder="ID de transaction si disponible">
+                </div>
+                
+                <button type="submit" style="width: 100%; background: #0070ba; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500;">
+                    <i class="fas fa-check-circle"></i> Confirmer le paiement
+                </button>
+                
+                <button type="button" id="cancelNatcash" style="width: 100%; background: #6b7280; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500; margin-top: 0.5rem;">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+            </form>
+            
+            <div id="natcashProgress" style="display: none; margin-top: 1.5rem;">
+                <h4 style="text-align: center; margin-bottom: 1rem;">Progression du transfert</h4>
+                <div class="progress-steps">
+                    <div class="progress-step">
+                        <div class="progress-step-icon" id="natcashStep1">⏳</div>
+                        <div class="progress-step-text">Vérification du paiement NatCash</div>
+                    </div>
+                    <div class="progress-step">
+                        <div class="progress-step-icon" id="natcashStep2">⏳</div>
+                        <div class="progress-step-text">Transfert vers PayPal</div>
+                    </div>
+                    <div class="progress-step">
+                        <div class="progress-step-icon" id="natcashStep3">⏳</div>
+                        <div class="progress-step-text">Finalisation de la commande</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="natcashSuccess" class="success-message" style="display: none; background: #dcfce7; color: #166534; padding: 1rem; border-radius: 0.375rem; text-align: center; margin-top: 1rem;">
+                <i class="fas fa-check-circle"></i> 
+                Paiement confirmé! Le transfert vers PayPal a été effectué avec succès.
+            </div>
+        </div>
+    </div>
+
     <!-- PayPal SDK -->
     <script src="https://www.paypal.com/sdk/js?client-id=AX4iV51P3BZMi2XMsaCvCWpHRKzVLsXSBTpCiJg16aZ62_ToUcO3Y-KLtA3v_0rM_LHfM2W7dmGbsOZF&currency=USD"></script>
-    <script type="module" src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
