@@ -77,11 +77,11 @@
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
+            gap: 极速加速器 1rem;
             margin-bottom: 2rem;
         }
         .stat-card {
-            background: #f0fdf4;
+            background: #f0极速加速器fdf4;
             padding: 1.5rem;
             border-radius: 0.5rem;
             border-left: 4px solid #10b981;
@@ -103,19 +103,28 @@
     </style>
     <!-- Firebase SDK -->
     <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-      import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-      window.firebaseConfig = {
-        apiKey: "AIzaSyC_krW6QcyTS6JZNJf-_7YAc_491mCWYaQ",
-        authDomain: "marchat-e4d21.firebaseapp.com",
-        projectId: "marchat-e4d21",
-        storageBucket: "marchat-e4d21.appspot.com",
-        messagingSenderId: "211043298263",
-        appId: "1:211043298263:web:dcf751d299aa4360d83992",
-        measurementId: "G-CZHXLDZTBW"
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+      import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+      
+      const firebaseConfig = {
+        apiKey: "AIzaSyBbWrhfvhFU7rxUqcwaXa0FF2C-f7Ti3Sk",
+        authDomain: "marcshop-3a594.firebaseapp.com",
+        databaseURL: "https://marcshop-3a594-default-rtdb.firebaseio.com",
+        projectId: "marcshop-3a594",
+        storageBucket: "marcshop-3a594.firebasestorage.app",
+        messagingSenderId: "330349520113",
+        appId: "1:330349520113:web:24dcf3869c616e14b8f550"
       };
-      window.firebaseApp = initializeApp(window.firebaseConfig);
-      window.firebaseDB = getFirestore(window.firebaseApp);
+      
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+      const auth = getAuth(app);
+      
+      window.firebaseApp = app;
+      window.firebaseDB = db;
+      window.firebaseAuth = auth;
+      window.signInWithEmailAndPassword = signInWithEmailAndPassword;
     </script>
 </head>
 <body>
@@ -126,6 +135,10 @@
                 <i class="fas fa-shield-alt"></i> Administration MarcShop
             </h2>
             <form id="loginForm">
+                <div class="form-group">
+                    <label for="adminEmail">Email administrateur</label>
+                    <input type="email" id="adminEmail" placeholder="admin@marcshop.com" required>
+                </div>
                 <div class="form-group">
                     <label for="adminPassword">Mot de passe administrateur</label>
                     <input type="password" id="adminPassword" placeholder="Entrez le mot de passe" required>
@@ -153,7 +166,7 @@
                     <i class="fas fa-chart-bar"></i> Tableau de bord
                 </button>
                 <button class="sidebar-btn" onclick="showSection('products')">
-                    <i class="fas fa-box"></i> Gestion des produits
+                    <极速加速器 i class="fas fa-box"></i> Gestion des produits
                 </button>
                 <button class="sidebar-btn" onclick="showSection('users')">
                     <i class="fas fa-users"></i> Utilisateurs
@@ -161,14 +174,11 @@
                 <button class="sidebar-btn" onclick="showSection('orders')">
                     <i class="fas fa-shopping-cart"></i> Commandes
                 </button>
-                <button class="sidebar-btn" onclick="showSection('carts')">
-                    <i class="fas fa-shopping-basket"></i> Paniers actifs
-                </button>
             </div>
             <div class="admin-main">
                 <div id="dashboardSection" class="admin-section active">
                     <h2>Tableau de bord</h2>
-                    <div class="stats-grid">
+                    <div class极速加速器="stats-grid">
                         <div class="stat-card">
                             <h3>Produits</h3>
                             <p style="font-size: 2rem; font-weight: bold; color: #10b981;" id="totalProducts">0</p>
@@ -182,8 +192,8 @@
                             <p style="font-size: 2rem; font-weight: bold; color: #10b981;" id="activeUsers">0</p>
                         </div>
                         <div class="stat-card">
-                            <h3>Paniers actifs</h3>
-                            <p style="font-size: 2rem; font-weight: bold; color: #10b981;" id="activeCarts">0</p>
+                            <h3>Commandes</h3>
+                            <p style="font-size: 2rem; font-weight: bold; color: #10b981;" id="totalOrders">0</p>
                         </div>
                     </div>
                 </div>
@@ -197,14 +207,14 @@
                                     <label for="productName">Nom du produit</label>
                                     <input type="text" id="productName" required>
                                 </div>
-                                <div class="form-group">
+                                <极速加速器 div class="form-group">
                                     <label for="productCategory">Catégorie</label>
                                     <select id="productCategory" required>
                                         <option value="electronics">Électronique</option>
                                         <option value="clothing">Vêtements</option>
-                                        <option value="home">Maison</option>
+                                        <option value="hair">Cheveux</option>
                                         <option value="beauty">Beauté</option>
-                                        <option value="sports">Sports</option>
+                                        <option value="shoes">Chaussures</option>
                                     </select>
                                 </div>
                             </div>
@@ -215,32 +225,16 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="productOriginalPrice">Prix original ($)</label>
-                                    <input type="number" id="productOriginalPrice" step="0.01" required>
+                                    <input type="number" id="productOriginalPrice" step="0.01">
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label for="productDescription">Description</label>
                                 <textarea id="productDescription" rows="3"></textarea>
                             </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                                <div class="form-group">
-                                    <label for="productImage1">Image 1 (URL)</label>
-                                    <input type="url" id="productImage1" placeholder="https://marcshop.com/image1.jpg">
-                                </div>
-                                <div class="form-group">
-                                    <label for="productImage2">Image 2 (URL)</label>
-                                    <input type="url" id="productImage2" placeholder="https://marcshop.com/image2.jpg">
-                                </div>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                                <div class="form-group">
-                                    <label for="productImage3">Image 3 (URL)</label>
-                                    <input type="url" id="productImage3" placeholder="https://marcshop.com/image3.jpg">
-                                </div>
-                                <div class="form-group">
-                                    <label for="productImage4">Image 4 (URL)</label>
-                                    <input type="url" id="productImage4" placeholder="https://marcshop.com/image4.jpg">
-                                </div>
+                            <div class="form-group">
+                                <label for="productImage">Image (URL)</label>
+                                <input type="url" id="productImage" placeholder="https://marcshop.com/image.jpg" required>
                             </div>
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-plus"></i> Ajouter le produit
@@ -257,13 +251,9 @@
                     <h2>Gestion des commandes</h2>
                     <div id="ordersList"></div>
                 </div>
-                <div id="cartsSection" class="admin-section">
-                    <h2>Paniers actifs</h2>
-                    <div id="cartsList"></div>
-                </div>
             </div>
         </div>
     </div>
-    <script type="module" src="admin.js"></script>
+    <script src="admin.js"></script>
 </body>
 </html>
