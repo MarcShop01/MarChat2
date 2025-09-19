@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -9,36 +9,24 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Firebase SDK -->
     <script type="module">
-      // Import des fonctions Firebase
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-      import { getFirestore } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-      import { getAuth } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-      
-      // Configuration Firebase
-      const firebaseConfig = {
-        apiKey: "AIzaSyBbWrhfvhFU7rxUqcwaXa0FF2C-f7Ti3Sk",
-        authDomain: "marcshop-3a594.firebaseapp.com",
-        databaseURL: "https://marcshop-3a594-default-rtdb.firebaseio.com",
-        projectId: "marcshop-3a594",
-        storageBucket: "marcshop-3a594.firebasestorage.app",
-        messagingSenderId: "330349520113",
-        appId: "1:330349520113:web:24dcf3869c616e14b8f550"
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+      window.firebaseConfig = {
+        apiKey: "AIzaSyC_krW6QcyTSJZNJf-_7YAc_491mCWYaQ",
+        authDomain: "marchat-e4d21.firebaseapp.com",
+        projectId: "marchat-e4d21",
+        storageBucket: "marchat-e4d21.appspot.com",
+        messagingSenderId: "211043298263",
+        appId: "1:211043298263:web:dcf751d299aa4360d83992",
+        measurementId: "G-CZHXLDZTBW"
       };
-      
-      // Initialisation Firebase
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      const auth = getAuth(app);
-      
-      // Exposition des variables globales
-      window.firebaseApp = app;
-      window.firebaseDB = db;
-      window.firebaseAuth = auth;
+      window.firebaseApp = initializeApp(window.firebaseConfig);
+      window.firebaseDB = getFirestore(window.firebaseApp);
     </script>
 </head>
 <body>
     <!-- Modal d'inscription -->
-    <div id="registrationModal" class="modal active">
+    <div id="registrationModal" class="modal">
         <div class="modal-content">
             <h2>Bienvenue sur MarcShop! 🛍️</h2>
             <p>Pour accéder à notre boutique, veuillez entrer vos informations</p>
@@ -79,7 +67,7 @@
                     <button class="user-btn" id="profileBtn">
                         <i class="fas fa-user"></i>
                     </button>
-                    <button class="cart-btn" id="cartBtn">
+                    <button class="cart-btn" onclick="toggleCart()">
                         <i class="fas fa-shopping-cart"></i>
                         <span id="cartCount" class="cart-count">0</span>
                     </button>
@@ -128,12 +116,12 @@
     <div id="cartSidebar" class="cart-sidebar">
         <div class="cart-header">
             <h3>Mon Panier</h3>
-            <button class="close-btn" id="closeCartBtn">
+            <button onclick="toggleCart()" class="close-btn">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <div id="cartItems" class="cart-items"></div>
-        <div style="margin:1.5rem 0; padding: 0 1rem;">
+        <div style="margin:1.5rem 0;">
             <div id="paypal-button-container"></div>
             <div style="text-align: center; margin: 1rem 0; color: #6b7280;">Ou</div>
             <button id="natcash-payment-btn" style="width: 100%; background: #0070ba; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500;">
@@ -194,7 +182,7 @@
                 </div>
                 
                 <button type="submit" style="width: 100%; background: #0070ba; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500;">
-                    <i class="fas fa-check-circle"></i> Confirmer le paiement
+                    <i class="fas fa-check-circle"></i> Confirmer le paiement et transfert vers PayPal
                 </button>
                 
                 <button type="button" id="cancelNatcash" style="width: 100%; background: #6b7280; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500; margin-top: 0.5rem;">
@@ -230,6 +218,6 @@
     <!-- PayPal SDK -->
     <script src="https://www.paypal.com/sdk/js?client-id=AX4iV51P3BZMi2XMsaCvCWpHRKzVLsXSBTpCiJg16aZ62_ToUcO3Y-KLtA3v_0rM_LHfM2W7dmGbsOZF&currency=USD"></script>
     <script type="module" src="script.js"></script>
-
 </body>
 </html>
+
