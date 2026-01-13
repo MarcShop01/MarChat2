@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -121,10 +121,8 @@
             </button>
         </div>
         <div id="cartItems" class="cart-items"></div>
-        <div style="margin:1.5rem 0;">
-            <div id="paypal-button-container"></div>
-            <div style="text-align: center; margin: 1rem 0; color: #6b7280;">Ou</div>
-            <button id="natcash-payment-btn" style="width: 100%; background: #0070ba; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500;">
+        <div style="margin:1.5rem 0; padding: 0 1.5rem;">
+            <button id="natcash-payment-btn" style="width: 100%; background: #0070ba; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500; display: none;">
                 <i class="fas fa-mobile-alt"></i> Payer avec NatCash
             </button>
         </div>
@@ -147,77 +145,610 @@
         <div id="lightboxDescription" class="lightbox-description"></div>
     </div>
 
-    <!-- Modal de paiement NatCash -->
+    <!-- Modal de paiement NatCash SIMPLIFIÉ -->
     <div id="natcashModal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
             <h2 style="color: #0070ba; text-align: center;">
-                <i class="fas fa-mobile-alt"></i> Paiement par NatCash
+                <i class="fas fa-mobile-alt"></i> Paiement NatCash
             </h2>
             
             <div class="amount-display" style="background: #f0fdf4; padding: 1rem; border-radius: 0.5rem; text-align: center; margin: 1rem 0; border-left: 4px solid #10b981;">
                 <p>Montant à payer:</p>
-                <h3 id="natcashAmount">0.00 €</h3>
+                <h3 id="natcashAmount">0.00 $</h3>
             </div>
             
             <div class="instructions" style="background: #fffbeb; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0; border-left: 4px solid #f59e0b;">
                 <h3 style="color: #d97706; margin-bottom: 0.5rem;">Instructions de paiement</h3>
-                <ol style="margin-left: 1.5rem;">
-                    <li>Ouvrez l'application NatCash sur votre téléphone</li>
-                    <li>Effectuez un transfert vers le numéro: <strong id="natcashBusinessNumber">50942557123</strong></li>
-                    <li>Entrez votre numéro NatCash et l'ID de transaction ci-dessous</li>
-                    <li>Cliquez sur "Confirmer le paiement"</li>
-                    <li>Le montant sera automatiquement transféré vers notre compte PayPal</li>
+                <ol style="margin-left: 1.5rem; color: #666;">
+                    <li>Effectuez un transfert NatCash vers notre numéro : <strong id="natcashBusinessNumber">670000000</strong></li>
+                    <li>Notez <strong>l'ID du transfert</strong> qui vous est donné</li>
+                    <li>Entrez les informations ci-dessous pour vérifier</li>
                 </ol>
             </div>
             
-            <form id="natcashForm">
-                <div class="form-group">
-                    <label for="natcashPhone">Votre numéro NatCash</label>
-                    <input type="tel" id="natcashPhone" required placeholder="Votre numéro NatCash">
+            <form id="natcashForm" style="padding: 0 1rem;">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="natcashTransferId" style="display: block; margin-bottom: 0.5rem; color: #333;">
+                        <i class="fas fa-receipt"></i> ID du Transfert NatCash *
+                    </label>
+                    <input type="text" id="natcashTransferId" required 
+                           placeholder="Ex: NAT123456789" 
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 0.375rem; font-size: 1rem;">
                 </div>
                 
-                <div class="form-group">
-                    <label for="natcashTransaction">ID de transaction NatCash (optionnel)</label>
-                    <input type="text" id="natcashTransaction" placeholder="ID de transaction si disponible">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="natcashPhone" style="display: block; margin-bottom: 0.5rem; color: #333;">
+                        <i class="fas fa-phone"></i> Votre Numéro NatCash *
+                    </label>
+                    <input type="tel" id="natcashPhone" required 
+                           placeholder="Ex: 670123456" 
+                           style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 0.375rem; font-size: 1rem;">
                 </div>
                 
-                <button type="submit" style="width: 100%; background: #0070ba; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500;">
-                    <i class="fas fa-check-circle"></i> Confirmer le paiement et transfert vers PayPal
+                <button type="submit" style="width: 100%; background: #0070ba; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500; font-size: 1rem;">
+                    <i class="fas fa-check-circle"></i> Vérifier et Confirmer le Paiement
                 </button>
                 
-                <button type="button" id="cancelNatcash" style="width: 100%; background: #6b7280; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500; margin-top: 0.5rem;">
+                <button type="button" id="cancelNatcash" style="width: 100%; background: #6b7280; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500; margin-top: 0.5rem; font-size: 1rem;">
                     <i class="fas fa-times"></i> Annuler
                 </button>
             </form>
             
-            <div id="natcashProgress" style="display: none; margin-top: 1.5rem;">
-                <h4 style="text-align: center; margin-bottom: 1rem;">Progression du transfert</h4>
-                <div class="progress-steps">
-                    <div class="progress-step">
-                        <div class="progress-step-icon" id="natcashStep1">⏳</div>
-                        <div class="progress-step-text">Vérification du paiement NatCash</div>
-                    </div>
-                    <div class="progress-step">
-                        <div class="progress-step-icon" id="natcashStep2">⏳</div>
-                        <div class="progress-step-text">Transfert vers PayPal</div>
-                    </div>
-                    <div class="progress-step">
-                        <div class="progress-step-icon" id="natcashStep3">⏳</div>
-                        <div class="progress-step-text">Finalisation de la commande</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="natcashSuccess" class="success-message" style="display: none; background: #dcfce7; color: #166534; padding: 1rem; border-radius: 0.375rem; text-align: center; margin-top: 1rem;">
-                <i class="fas fa-check-circle"></i> 
-                Paiement confirmé! Le transfert vers PayPal a été effectué avec succès.
-            </div>
+            <div id="natcashResult" style="margin: 1rem; min-height: 50px;"></div>
         </div>
     </div>
 
-    <!-- PayPal SDK -->
-    <script src="https://www.paypal.com/sdk/js?client-id=AX4iV51P3BZMi2XMsaCvCWpHRKzVLsXSBTpCiJg16aZ62_ToUcO3Y-KLtA3v_0rM_LHfM2W7dmGbsOZF&currency=USD"></script>
-    <script type="module" src="script.js"></script>
+    <!-- Modal de confirmation de commande -->
+    <div id="orderConfirmationModal" class="modal">
+        <div class="modal-content" style="max-width: 500px; text-align: center;">
+            <div style="font-size: 4rem; color: #10b981; margin-bottom: 1rem;">🎉</div>
+            <h2 style="color: #333; margin-bottom: 1rem;">Commande Confirmée !</h2>
+            <p id="orderConfirmationText" style="color: #666; margin-bottom: 1.5rem;">
+                Votre paiement a été vérifié avec succès.
+            </p>
+            <div style="background: #f3f4f6; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem;">
+                <p style="margin: 0.5rem 0;"><strong>ID Commande:</strong> <span id="orderIdDisplay">-</span></p>
+                <p style="margin: 0.5rem 0;"><strong>Montant:</strong> $<span id="orderAmountDisplay">0.00</span></p>
+                <p style="margin: 0.5rem 0;"><strong>Date:</strong> <span id="orderDateDisplay">-</span></p>
+            </div>
+            <button onclick="closeOrderConfirmation()" style="width: 100%; background: #0070ba; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-check"></i> Parfait, merci !
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        // ============================================
+        // INITIALISATION ET GESTION DU SITE
+        // ============================================
+        
+        // Configuration
+        const NATCASH_CONFIG = {
+            merchantNumber: "670000000",
+            collectionName: "natcash_payments",
+            ordersCollection: "orders"
+        };
+
+        // Variables globales
+        let currentUser = null;
+        let allProducts = [];
+        let filteredProducts = [];
+
+        // Attendre que Firebase soit chargé
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initializeApp();
+            setupEventListeners();
+            checkUserSession();
+        });
+
+        // Initialiser l'application
+        async function initializeApp() {
+            // Charger les produits depuis Firebase
+            await loadProducts();
+            
+            // Initialiser le panier
+            updateCartUI();
+            
+            // Initialiser le paiement NatCash
+            initNatcashPayment();
+        }
+
+        // ============================================
+        // GESTION UTILISATEUR
+        // ============================================
+        
+        function checkUserSession() {
+            const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+            if (userInfo) {
+                currentUser = userInfo;
+                document.getElementById('userNameDisplay').textContent = userInfo.name;
+                document.getElementById('registrationModal').style.display = 'none';
+            } else {
+                document.getElementById('registrationModal').style.display = 'flex';
+            }
+        }
+
+        // Gestion du formulaire d'inscription
+        document.getElementById('registrationForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const userInfo = {
+                name: document.getElementById('userName').value,
+                email: document.getElementById('userEmail').value,
+                phone: document.getElementById('userPhone').value
+            };
+            
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
+            currentUser = userInfo;
+            document.getElementById('userNameDisplay').textContent = userInfo.name;
+            document.getElementById('registrationModal').style.display = 'none';
+            
+            // Message de bienvenue
+            alert(`Bienvenue ${userInfo.name} sur MarcShop ! 🎉`);
+        });
+
+        // ============================================
+        // GESTION DES PRODUITS
+        // ============================================
+        
+        async function loadProducts() {
+            try {
+                const db = window.firebaseDB;
+                const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js");
+                
+                const productsRef = collection(db, "products");
+                const snapshot = await getDocs(productsRef);
+                
+                allProducts = [];
+                snapshot.forEach(doc => {
+                    allProducts.push({ id: doc.id, ...doc.data() });
+                });
+                
+                filteredProducts = [...allProducts];
+                displayProducts();
+                
+            } catch (error) {
+                console.error("Erreur chargement produits:", error);
+            }
+        }
+        
+        function displayProducts() {
+            const productsGrid = document.getElementById('productsGrid');
+            
+            if (filteredProducts.length === 0) {
+                productsGrid.innerHTML = `
+                    <div class="no-products">
+                        <h3>Aucun produit disponible</h3>
+                        <p>Les produits seront affichés ici une fois ajoutés par l'administrateur.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            productsGrid.innerHTML = filteredProducts.map(product => `
+                <div class="product-card" data-category="${product.category || 'all'}">
+                    <div class="product-image" onclick="openLightbox('${product.image}', '${product.description}')" style="cursor:pointer;">
+                        <img src="${product.image}" alt="${product.name}">
+                        ${product.discount ? `<span class="discount-badge">-${product.discount}%</span>` : ''}
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-title">${product.name}</h3>
+                        <p class="product-description">${product.description}</p>
+                        <div class="product-price">
+                            <span class="current-price">$${product.price}</span>
+                            ${product.originalPrice ? `<span class="original-price">$${product.originalPrice}</span>` : ''}
+                        </div>
+                        <button class="add-to-cart-btn" onclick="addToCart('${product.id}', '${product.name}', ${product.price}, '${product.image}')">
+                            <i class="fas fa-cart-plus"></i> Ajouter au panier
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ============================================
+        // GESTION DU PANIER
+        // ============================================
+        
+        function getCart() {
+            return JSON.parse(localStorage.getItem('cart')) || [];
+        }
+        
+        function saveCart(cart) {
+            localStorage.setItem('cart', JSON.stringify(cart));
+        }
+        
+        function addToCart(productId, name, price, image) {
+            let cart = getCart();
+            const existingItem = cart.find(item => item.id === productId);
+            
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({
+                    id: productId,
+                    name: name,
+                    price: price,
+                    image: image,
+                    quantity: 1
+                });
+            }
+            
+            saveCart(cart);
+            updateCartUI();
+            
+            // Animation feedback
+            const cartBtn = document.querySelector('.cart-btn');
+            cartBtn.style.transform = 'scale(1.1)';
+            setTimeout(() => cartBtn.style.transform = 'scale(1)', 300);
+        }
+        
+        function removeFromCart(productId) {
+            let cart = getCart();
+            cart = cart.filter(item => item.id !== productId);
+            saveCart(cart);
+            updateCartUI();
+        }
+        
+        function updateCartUI() {
+            const cart = getCart();
+            const cartItems = document.getElementById('cartItems');
+            const cartCount = document.getElementById('cartCount');
+            const cartTotal = document.getElementById('cartTotal');
+            const natcashBtn = document.getElementById('natcash-payment-btn');
+            
+            // Mettre à jour le compteur
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            cartCount.textContent = totalItems;
+            
+            // Mettre à jour les articles
+            if (cart.length === 0) {
+                cartItems.innerHTML = '<p class="empty-cart">Votre panier est vide</p>';
+                if (natcashBtn) natcashBtn.style.display = 'none';
+                cartTotal.textContent = '0.00';
+            } else {
+                cartItems.innerHTML = '';
+                let total = 0;
+                
+                cart.forEach(item => {
+                    const itemTotal = item.price * item.quantity;
+                    total += itemTotal;
+                    
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'cart-item';
+                    itemElement.innerHTML = `
+                        <img src="${item.image}" alt="${item.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 0.375rem;">
+                        <div style="flex: 1; margin-left: 1rem;">
+                            <h4 style="margin: 0; font-size: 0.875rem;">${item.name}</h4>
+                            <p style="margin: 0.25rem 0; color: #6b7280; font-size: 0.75rem;">$${item.price.toFixed(2)} × ${item.quantity}</p>
+                            <p style="margin: 0; font-weight: 600; color: #111827;">$${itemTotal.toFixed(2)}</p>
+                        </div>
+                        <button onclick="removeFromCart('${item.id}')" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 0.5rem;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `;
+                    cartItems.appendChild(itemElement);
+                });
+                
+                cartTotal.textContent = total.toFixed(2);
+                if (natcashBtn) natcashBtn.style.display = 'block';
+            }
+        }
+        
+        function toggleCart() {
+            const cartSidebar = document.getElementById('cartSidebar');
+            const overlay = document.getElementById('overlay');
+            
+            if (cartSidebar.style.right === '0px') {
+                cartSidebar.style.right = '-400px';
+                overlay.style.display = 'none';
+            } else {
+                cartSidebar.style.right = '0';
+                overlay.style.display = 'block';
+            }
+        }
+
+        // ============================================
+        // GESTION DU PAIEMENT NATCASH
+        // ============================================
+        
+        function initNatcashPayment() {
+            const natcashBtn = document.getElementById('natcash-payment-btn');
+            const natcashModal = document.getElementById('natcashModal');
+            const natcashForm = document.getElementById('natcashForm');
+            const cancelNatcash = document.getElementById('cancelNatcash');
+            
+            if (!natcashBtn || !natcashModal) return;
+            
+            // Ouvrir le modal NatCash
+            natcashBtn.addEventListener('click', () => {
+                const cart = getCart();
+                if (cart.length === 0) {
+                    alert('Votre panier est vide');
+                    return;
+                }
+                
+                const cartTotal = parseFloat(document.getElementById('cartTotal').textContent);
+                document.getElementById('natcashAmount').textContent = cartTotal.toFixed(2);
+                natcashModal.style.display = 'block';
+            });
+            
+            // Annuler
+            cancelNatcash.addEventListener('click', () => {
+                natcashModal.style.display = 'none';
+                natcashForm.reset();
+                document.getElementById('natcashResult').innerHTML = '';
+            });
+            
+            // Soumettre le formulaire
+            natcashForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const transferId = document.getElementById('natcashTransferId').value.trim();
+                const phoneNumber = document.getElementById('natcashPhone').value.trim();
+                
+                if (!transferId || !phoneNumber) {
+                    showNatcashResult('❌ Veuillez remplir tous les champs.', 'error');
+                    return;
+                }
+                
+                // Valider le format du numéro (pour le Cameroun)
+                if (!/^6[0-9]{8}$/.test(phoneNumber)) {
+                    showNatcashResult('❌ Numéro invalide. Format: 6XXXXXXXX', 'error');
+                    return;
+                }
+                
+                // Récupérer les données
+                const cart = getCart();
+                const userInfo = JSON.parse(localStorage.getItem('userInfo')) || {};
+                const totalAmount = parseFloat(document.getElementById('cartTotal').textContent);
+                
+                // Préparer les données de commande
+                const orderData = {
+                    orderId: generateOrderId(),
+                    customerName: userInfo.name || 'Client',
+                    customerEmail: userInfo.email || '',
+                    customerPhone: userInfo.phone || phoneNumber,
+                    amount: totalAmount,
+                    products: cart.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        price: item.price,
+                        quantity: item.quantity,
+                        image: item.image
+                    })),
+                    totalItems: cart.reduce((sum, item) => sum + item.quantity, 0)
+                };
+                
+                // Désactiver le bouton
+                const submitBtn = natcashForm.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification...';
+                submitBtn.disabled = true;
+                
+                // Vérifier le paiement
+                const result = await verifyNatcashPayment(transferId, phoneNumber, orderData);
+                
+                if (result.success) {
+                    showNatcashResult(result.message, 'success');
+                    
+                    // Vider le panier
+                    localStorage.removeItem('cart');
+                    updateCartUI();
+                    
+                    // Fermer les modaux après 2 secondes
+                    setTimeout(() => {
+                        natcashModal.style.display = 'none';
+                        toggleCart();
+                        showOrderConfirmation(orderData);
+                    }, 2000);
+                } else {
+                    showNatcashResult(result.message, 'error');
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            });
+        }
+        
+        async function verifyNatcashPayment(transferId, phoneNumber, orderData) {
+            try {
+                const db = window.firebaseDB;
+                const { collection, addDoc, getDocs, query, where } = await import("https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js");
+                
+                // 1. Vérifier si ce transfert existe déjà
+                const paymentsRef = collection(db, NATCASH_CONFIG.collectionName);
+                const q = query(paymentsRef, where("transferId", "==", transferId));
+                const querySnapshot = await getDocs(q);
+                
+                if (!querySnapshot.empty) {
+                    return { success: false, message: "❌ Ce transfert a déjà été utilisé." };
+                }
+                
+                // 2. Enregistrer le paiement
+                const paymentData = {
+                    transferId: transferId,
+                    phoneNumber: phoneNumber,
+                    orderId: orderData.orderId,
+                    customerName: orderData.customerName,
+                    customerPhone: orderData.customerPhone,
+                    amount: orderData.amount,
+                    products: orderData.products,
+                    status: "verified",
+                    verifiedAt: new Date().toISOString(),
+                    createdAt: new Date().toISOString()
+                };
+                
+                await addDoc(paymentsRef, paymentData);
+                
+                // 3. Enregistrer la commande
+                const ordersRef = collection(db, NATCASH_CONFIG.ordersCollection);
+                const orderDoc = {
+                    ...orderData,
+                    paymentMethod: "NatCash",
+                    paymentStatus: "paid",
+                    paymentVerified: true,
+                    natcashTransferId: transferId,
+                    natcashPhone: phoneNumber,
+                    orderDate: new Date().toISOString(),
+                    status: "processing"
+                };
+                
+                await addDoc(ordersRef, orderDoc);
+                
+                return { 
+                    success: true, 
+                    message: "✅ Paiement vérifié ! Votre commande est confirmée." 
+                };
+                
+            } catch (error) {
+                console.error("Erreur NatCash:", error);
+                return { 
+                    success: false, 
+                    message: "❌ Erreur lors de la vérification." 
+                };
+            }
+        }
+        
+        function generateOrderId() {
+            const timestamp = Date.now();
+            const random = Math.floor(Math.random() * 1000);
+            return `CMD-${timestamp}-${random}`;
+        }
+        
+        function showNatcashResult(message, type) {
+            const resultDiv = document.getElementById('natcashResult');
+            resultDiv.innerHTML = `
+                <div style="padding: 1rem; border-radius: 0.5rem; background: ${type === 'success' ? '#dcfce7' : '#fee2e2'}; 
+                            color: ${type === 'success' ? '#166534' : '#991b1b'}; border-left: 4px solid ${type === 'success' ? '#10b981' : '#ef4444'};">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                    ${message}
+                </div>
+            `;
+        }
+        
+        function showOrderConfirmation(orderData) {
+            const modal = document.getElementById('orderConfirmationModal');
+            document.getElementById('orderIdDisplay').textContent = orderData.orderId;
+            document.getElementById('orderAmountDisplay').textContent = orderData.amount.toFixed(2);
+            document.getElementById('orderDateDisplay').textContent = new Date().toLocaleString();
+            document.getElementById('orderConfirmationText').textContent = 
+                `Merci ${orderData.customerName} ! Votre commande de ${orderData.totalItems} article(s) a été confirmée.`;
+            modal.style.display = 'block';
+        }
+        
+        function closeOrderConfirmation() {
+            document.getElementById('orderConfirmationModal').style.display = 'none';
+        }
+
+        // ============================================
+        // FONCTIONS UTILITAIRES
+        // ============================================
+        
+        function setupEventListeners() {
+            // Recherche
+            const searchInput = document.getElementById('searchInput');
+            const searchIcon = document.getElementById('searchIcon');
+            const clearSearch = document.getElementById('clearSearch');
+            
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                clearSearch.style.display = searchTerm ? 'block' : 'none';
+                
+                filteredProducts = allProducts.filter(product => 
+                    product.name.toLowerCase().includes(searchTerm) ||
+                    product.description.toLowerCase().includes(searchTerm)
+                );
+                displayProducts();
+            });
+            
+            clearSearch.addEventListener('click', function() {
+                searchInput.value = '';
+                clearSearch.style.display = 'none';
+                filteredProducts = [...allProducts];
+                displayProducts();
+            });
+            
+            // Catégories
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const category = this.dataset.category;
+                    if (category === 'all') {
+                        filteredProducts = [...allProducts];
+                    } else {
+                        filteredProducts = allProducts.filter(product => 
+                            product.category === category
+                        );
+                    }
+                    displayProducts();
+                });
+            });
+            
+            // Overlay pour fermer le panier
+            document.getElementById('overlay').addEventListener('click', toggleCart);
+            
+            // Profile button
+            document.getElementById('profileBtn').addEventListener('click', () => {
+                const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+                if (userInfo) {
+                    alert(`Profil:\nNom: ${userInfo.name}\nEmail: ${userInfo.email}\nTéléphone: ${userInfo.phone}`);
+                } else {
+                    alert('Veuillez vous inscrire d\'abord');
+                }
+            });
+            
+            // Share button
+            document.getElementById('shareBtn').addEventListener('click', () => {
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'MarcShop',
+                        text: 'Découvrez MarcShop, votre boutique en ligne préférée !',
+                        url: window.location.href
+                    });
+                } else {
+                    alert('Lien copié ! Partagez-le avec vos amis.');
+                }
+            });
+        }
+        
+        // Lightbox pour images
+        window.openLightbox = function(imageSrc, description) {
+            const lightbox = document.getElementById('productLightbox');
+            const lightboxImg = document.getElementById('lightboxImage');
+            const lightboxDesc = document.getElementById('lightboxDescription');
+            
+            lightboxImg.src = imageSrc;
+            lightboxDesc.textContent = description;
+            lightbox.style.display = 'block';
+        };
+        
+        // Fermer lightbox
+        document.querySelector('#productLightbox .close').addEventListener('click', function() {
+            document.getElementById('productLightbox').style.display = 'none';
+        });
+        
+        // Navigation lightbox
+        document.querySelector('#productLightbox .prev').addEventListener('click', function() {
+            // Implémenter la navigation si nécessaire
+        });
+        
+        document.querySelector('#productLightbox .next').addEventListener('click', function() {
+            // Implémenter la navigation si nécessaire
+        });
+
+        // Fermer les modaux en cliquant en dehors
+        window.addEventListener('click', function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                    document.getElementById('natcashForm').reset();
+                    document.getElementById('natcashResult').innerHTML = '';
+                }
+            });
+        });
+    </script>
 </body>
 </html>
-
