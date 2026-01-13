@@ -270,7 +270,7 @@ body {
   border-radius: 0.375rem;
   cursor: pointer;
   font-weight: 500;
-  transition: background-color 极速加速器 0.2s;
+  transition: background-color 0.2s;
 }
 
 .add-to-cart:hover {
@@ -283,16 +283,12 @@ body {
   position: fixed;
   top: 0;
   left: 0;
-  width: 极速加速器 100%;
+  width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.5);
   z-index: 1000;
   align-items: center;
   justify-content: center;
-}
-
-.modal.active {
-  display: flex;
 }
 
 .modal-content {
@@ -333,7 +329,7 @@ body {
 .modal-content button {
   width: 100%;
   background: #10b981;
- 极速加速器 color: white;
+  color: white;
   border: none;
   padding: 0.75rem;
   border-radius: 0.375rem;
@@ -342,13 +338,13 @@ body {
   margin-top: 1rem;
 }
 
-/* Cart Sidebar */
+/* === PANIER SIMPLIFIÉ === */
 .cart-sidebar {
   position: fixed;
   top: 0;
   right: -400px;
   width: 400px;
-  height: 100%;
+  height: 100vh;
   background: white;
   box-shadow: -4px 0 6px rgba(0, 0, 0, 0.1);
   z-index: 200;
@@ -365,14 +361,16 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
+  padding: 1.5rem;
   border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
 }
 
 .cart-items {
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
+  max-height: calc(100vh - 300px);
 }
 
 .empty-cart {
@@ -396,7 +394,7 @@ body {
 }
 
 .cart-item-info {
-  flex: 极速加速器 1;
+  flex: 1;
 }
 
 .cart-item-name {
@@ -417,7 +415,7 @@ body {
 }
 
 .quantity-btn {
-  background: #f3极速加速器f4f6;
+  background: #f3f4f6;
   border: none;
   width: 2rem;
   height: 2rem;
@@ -426,24 +424,60 @@ body {
 }
 
 .cart-footer {
-  padding: 1rem;
+  padding: 1.5rem;
   border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
 }
 
 .cart-total {
   margin-bottom: 1rem;
   font-size: 1.125rem;
+  text-align: center;
 }
 
-.checkout-btn {
+/* Bouton NatCash */
+#natcash-payment-btn {
   width: 100%;
   background: #10b981;
   color: white;
+  padding: 1rem;
   border: none;
-  padding: 0.75rem;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
+  display: none;
+  margin-top: 1rem;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+#natcash-payment-btn:hover {
+  background: #059669;
+}
+
+#natcash-payment-btn i {
+  font-size: 1.2rem;
+}
+
+/* Scrollbar */
+.cart-items::-webkit-scrollbar {
+  width: 6px;
+}
+
+.cart-items::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.cart-items::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.cart-items::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 
 /* Overlay */
@@ -558,7 +592,7 @@ body {
   opacity: 1;
 }
 
-/* Form elements in admin */
+/* Form elements */
 .form-group {
   margin-bottom: 1rem;
 }
@@ -630,49 +664,179 @@ body {
 .success-message {
   background: #dcfce7;
   color: #166534;
-  padding: 极速加速器 1rem;
+  padding: 1rem;
   border-radius: 0.375rem;
   text-align: center;
   margin-top: 1rem;
   display: none;
 }
 
-/* Styles pour les indicateurs de progression NatCash */
-.progress-steps {
-  margin: 1.5rem 0;
-}
+/* =========================================== */
+/* STYLES NATCASH SPÉCIFIQUES - À AJOUTER */
+/* =========================================== */
 
-.progress-step {
-  display: flex;
+/* Modal de confirmation de commande */
+#orderConfirmationModal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
   align-items: center;
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  background: #f9fafb;
-  border-radius: 0.5rem;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
 }
 
-.progress-step-icon {
-  margin-right: 1rem;
-  font-size: 1.5rem;
-  width: 30px;
-  text-align: center;
+#orderConfirmationModal .modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 10px;
+  max-width: 500px;
+  width: 90%;
+  animation: slideUp 0.3s ease;
 }
 
-.progress-step-text {
-  flex: 1;
+/* Animation pour les modals */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Styles spécifiques NatCash */
+#natcashModal .form-group {
+  margin-bottom: 1.5rem;
+}
+
+#natcashModal .form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #374151;
+  font-weight: 500;
   font-size: 0.9rem;
 }
 
-.status-completed {
+#natcashModal .form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+#natcashModal .form-group input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* Bouton NatCash dans le panier */
+#natcash-payment-btn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+#natcash-payment-btn:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+#natcash-payment-btn:active {
+  transform: translateY(0);
+}
+
+/* État de chargement des boutons */
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Message de résultat NatCash */
+#natcashResult {
+  margin-top: 1.5rem;
+  animation: fadeIn 0.3s ease;
+}
+
+#natcashResult > div {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border-left: 4px solid;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+#natcashResult > div i {
+  font-size: 1.25rem;
+}
+
+/* Overlay amélioré */
+.overlay.active {
+  display: block;
+  backdrop-filter: blur(2px);
+}
+
+/* Correction pour le modal NatCash sur mobile */
+@media (max-width: 768px) {
+  #natcashModal .modal-content {
+    margin: 1rem;
+    padding: 1.5rem;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  #orderConfirmationModal .modal-content {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+  
+  #natcashResult > div {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+}
+
+/* Amélioration de l'apparence du montant NatCash */
+#natcashAmount {
+  font-size: 2rem;
+  font-weight: 700;
   color: #10b981;
+  margin: 0.5rem 0;
 }
 
-.status-failed {
-  color: #ef4444;
-}
-
-.status-processing {
-  color: #f59e0b;
+/* Style pour le numéro marchand NatCash */
+#natcashBusinessNumber {
+  background: #fffbeb;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  display: inline-block;
+  font-family: monospace;
+  font-size: 1.1rem;
+  color: #d97706;
+  margin-top: 0.25rem;
 }
 
 /* Responsive */
@@ -693,9 +857,8 @@ body {
     right: -100%;
   }
 
-  .admin-panel {
-    width: 100%;
-    left: -100%;
+  .cart-items {
+    max-height: calc(100vh - 280px);
   }
 
   .products-grid {
@@ -722,4 +885,10 @@ body {
   .instructions ol {
     margin-left: 1rem;
   }
-}                      
+  
+  /* Boutons de paiement mobile */
+  #natcash-payment-btn {
+    padding: 0.875rem;
+    font-size: 0.9rem;
+  }
+}
