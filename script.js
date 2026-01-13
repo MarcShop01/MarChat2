@@ -28,7 +28,7 @@ let activityIntervalId = null;
 
 // Configuration NatCash
 const NATCASH_CONFIG = {
-  merchantNumber: "50942557123", // Votre numéro NatCash marchand
+  merchantNumber: "50942557123",
   collectionName: "natcash_payments",
   ordersCollection: "orders",
   cartsCollection: "carts"
@@ -60,6 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addToCart = addToCart;
   window.updateQuantity = updateQuantity;
   window.removeFromCart = removeFromCart;
+  window.closeOrderConfirmation = closeOrderConfirmation;
 });
 
 function loadFirestoreProducts() {
@@ -158,7 +159,7 @@ function loadCart() {
 
 // Synchroniser le panier avec Firestore
 async function syncCartToFirestore() {
-  if (!currentUser) return;
+  if (!currentUser || !currentUser.id) return;
   
   try {
     // Vérifier si l'utilisateur a déjà un panier dans Firestore
@@ -190,7 +191,7 @@ async function syncCartToFirestore() {
 
 // Mettre à jour l'activité de l'utilisateur
 async function updateUserActivity() {
-  if (!currentUser) return;
+  if (!currentUser || !currentUser.id) return;
   
   try {
     const userRef = doc(db, "users", currentUser.id);
@@ -205,7 +206,7 @@ async function updateUserActivity() {
 
 // Configurer le suivi d'activité de l'utilisateur
 function setupUserActivityTracking() {
-  if (!currentUser) return;
+  if (!currentUser || !currentUser.id) return;
   
   // Mettre à jour l'activité immédiatement
   updateUserActivity();
@@ -227,7 +228,7 @@ function setupUserActivityTracking() {
   
   // Mettre isOnline à false lorsque l'utilisateur quitte la page
   window.addEventListener('beforeunload', async () => {
-    if (currentUser) {
+    if (currentUser && currentUser.id) {
       try {
         const userRef = doc(db, "users", currentUser.id);
         await updateDoc(userRef, { isOnline: false });
@@ -253,33 +254,21 @@ function checkUserRegistration() {
     setTimeout(() => {
       const registrationModal = document.getElementById("registrationModal");
       if (registrationModal) {
-        registrationModal.classList.add("active");
+        registrationModal.style.display = "flex";
       }
     }, 1000);
   } else {
     const registrationModal = document.getElementById("registrationModal");
     if (registrationModal) {
-      registrationModal.classList.remove("active");
+      registrationModal.style.display = "none";
     }
     displayUserName();
   }
 }
 
 function setupEventListeners() {
-  // Vérification robuste de tous les éléments avant d'ajouter des event listeners
-  const registrationForm = document.getElementById("registrationForm");
-  const shareBtn = document.getElementById("shareBtn");
-  const userLogo = document.querySelector(".user-logo");
-  const profileBtn = document.getElementById("profileBtn");
-  const overlay = document.getElementById("overlay");
-  const searchInput = document.getElementById("searchInput");
-  const clearSearch = document.getElementById("clearSearch");
-  const searchIcon = document.getElementById("searchIcon");
-  const natcashPaymentBtn = document.getElementById("natcash-payment-btn");
-  const natcashForm = document.getElementById("natcashForm");
-  const cancelNatcash = document.getElementById("cancelNatcash");
-
   // Formulaire d'inscription
+  const registrationForm = document.getElementById("registrationForm");
   if (registrationForm) {
     registrationForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -290,18 +279,17 @@ function setupEventListeners() {
         await registerUser(name, email, phone);
       }
     });
-  } else {
-    console.warn("Élément #registrationForm introuvable");
   }
 
   // Bouton de partage
+  const shareBtn = document.getElementById("shareBtn");
   if (shareBtn) {
     shareBtn.addEventListener("click", shareWebsite);
-  } else {
-    console.warn("Élément #shareBtn introuvable");
   }
 
   // Logo utilisateur et profil
+  const userLogo = document.querySelector(".user-logo");
+  const profileBtn = document.getElementById("profileBtn");
   if (userLogo) {
     userLogo.addEventListener("click", showUserProfile);
   }
@@ -318,11 +306,10 @@ function setupEventListeners() {
         filterByCategory(this.dataset.category);
       });
     });
-  } else {
-    console.warn("Aucun bouton .category-btn trouvé");
   }
 
   // Overlay
+  const overlay = document.getElementById("overlay");
   if (overlay) {
     overlay.addEventListener("click", () => {
       closeAllPanels();
@@ -330,6 +317,10 @@ function setupEventListeners() {
   }
 
   // Recherche de produits
+  const searchInput = document.getElementById("searchInput");
+  const clearSearch = document.getElementById("clearSearch");
+  const searchIcon = document.getElementById("searchIcon");
+  
   if (searchInput && clearSearch && searchIcon) {
     searchInput.addEventListener("input", (e) => {
       searchTerm = e.target.value.toLowerCase().trim();
@@ -347,27 +338,32 @@ function setupEventListeners() {
     searchIcon.addEventListener("click", () => {
       applyFilters();
     });
-  } else {
-    console.warn("Éléments de recherche introuvables");
   }
 
   // Événements pour NatCash
+  const natcashPaymentBtn = document.getElementById("natcash-payment-btn");
+  const natcashForm = document.getElementById("natcashForm");
+  const cancelNatcash = document.getElementById("cancelNatcash");
+
   if (natcashPaymentBtn) {
     natcashPaymentBtn.addEventListener("click", openNatcashModal);
-  } else {
-    console.warn("Élément #natcash-payment-btn introuvable");
   }
 
   if (natcashForm) {
     natcashForm.addEventListener("submit", processNatcashPayment);
-  } else {
-    console.warn("Élément #natcashForm introuvable");
   }
 
   if (cancelNatcash) {
     cancelNatcash.addEventListener("click", closeNatcashModal);
-  } else {
-    console.warn("Élément #cancelNatcash introuvable");
+  }
+  
+  // Confirmation de commande
+  const closeOrderConfirmation = document.getElementById("closeOrderConfirmation");
+  if (closeOrderConfirmation) {
+    closeOrderConfirmation.addEventListener("click", () => {
+      document.getElementById("orderConfirmationModal").style.display = "none";
+      document.getElementById("overlay").classList.remove("active");
+    });
   }
 }
 
@@ -392,10 +388,7 @@ function applyFilters() {
 
 function setupLightbox() {
   const lightbox = document.getElementById("productLightbox");
-  if (!lightbox) {
-    console.warn("Élément #productLightbox introuvable");
-    return;
-  }
+  if (!lightbox) return;
 
   const closeBtn = lightbox.querySelector(".close");
   const prevBtn = lightbox.querySelector(".prev");
@@ -490,10 +483,13 @@ async function registerUser(name, email, phone) {
     
     const registrationModal = document.getElementById("registrationModal");
     if (registrationModal) {
-      registrationModal.classList.remove("active");
+      registrationModal.style.display = "none";
     }
+    
+    // Message de bienvenue
+    showCartNotification(`Bienvenue ${name} sur MarcShop ! 🎉`);
   } catch (e) {
-    alert("Erreur lors de l'inscription. Réessayez.");
+    showCartNotification("Erreur lors de l'inscription. Réessayez.");
     console.error(e);
   }
 }
@@ -508,7 +504,7 @@ function displayUserName() {
 
 function showUserProfile() {
   if (!currentUser) return;
-  alert(`Bienvenue ${currentUser.name}\nEmail : ${currentUser.email}\nTéléphone : ${currentUser.phone}`);
+  alert(`Profil:\nNom: ${currentUser.name}\nEmail: ${currentUser.email}\nTéléphone: ${currentUser.phone}`);
 }
 
 function renderProducts() {
@@ -529,9 +525,9 @@ function renderProducts() {
     const discount = product.originalPrice > 0 ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
     const rating = 4.0 + Math.random() * 1.0;
     const reviews = Math.floor(Math.random() * 1000) + 100;
-    const firstImage = product.images[0] || "https://via.placeholder.com/200?text=Image+Manquante";
+    const firstImage = product.images?.[0] || "https://via.placeholder.com/200?text=Image+Manquante";
     return `
-      <div class="product-card" data-category="${product.category}">
+      <div class="product-card" data-category="${product.category || 'all'}">
         <div class="product-image" onclick="openLightbox('${product.id}')">
           <img src="${firstImage}" alt="${product.name}" class="product-img">
           <div class="product-badge">NOUVEAU</div>
@@ -544,8 +540,8 @@ function renderProducts() {
             <span>(${reviews})</span>
           </div>
           <div class="product-price">
-            <span class="current-price">$${product.price.toFixed(2)}</span>
-            ${product.originalPrice > 0 ? `<span class="original-price">$${product.originalPrice.toFixed(2)}</span>` : ''}
+            <span class="current-price">$${product.price?.toFixed(2) || '0.00'}</span>
+            ${product.originalPrice > 0 ? `<span class="original-price">$${product.originalPrice?.toFixed(2) || '0.00'}</span>` : ''}
           </div>
           <button class="add-to-cart" onclick="addToCart('${product.id}'); event.stopPropagation()">
             <i class="fas fa-shopping-cart"></i> Ajouter
@@ -578,30 +574,53 @@ function openProductOptions(product) {
   
   let modal = document.createElement("div");
   modal.className = "modal";
-  modal.style.display = "flex";
+  modal.style.cssText = `
+    display: flex; 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background: rgba(0,0,0,0.5); 
+    z-index: 1000; 
+    align-items: center; 
+    justify-content: center;
+  `;
+  
   modal.innerHTML = `
-    <div class="modal-content" style="max-width:400px;">
+    <div class="modal-content" style="max-width:400px; background: white; padding: 2rem; border-radius: 0.5rem;">
       <h3>Ajouter au panier</h3>
-      <img src="${product.images[0]}" style="max-width:120px;max-height:120px;border-radius:6px;">
-      <p><strong>${product.name}</strong></p>
-      <form id="optionsForm">
-        <label for="cartSize">Taille/Modèle :</label>
-        <select id="cartSize" name="size" required>
-          <option value="">Sélectionner</option>
-          ${sizeOptions.map(s => `<option value="${s}">${s}</option>`).join("")}
-        </select>
-        <label for="cartColor" style="margin-top:1rem;">Couleur :</label>
-        <select id="cartColor" name="color" required>
-          <option value="">Sélectionner</option>
-          ${COLORS.map(c => `<option value="${c}">${c}</option>`).join("")}
-        </select>
-        <label for="cartQty" style="margin-top:1rem;">Quantité :</label>
-        <input type="number" id="cartQty" name="qty" min="1" value="1" style="width:60px;">
-        <button type="submit" id="submitOptions" style="margin-top:1rem;background:#10b981;color:white;">Ajouter au panier</button>
-        <button type="button" id="closeOptions" style="margin-top:0.5rem;">Annuler</button>
+      <img src="${product.images?.[0] || ''}" style="max-width:120px;max-height:120px;border-radius:6px; margin: 1rem auto; display: block;">
+      <p style="text-align: center;"><strong>${product.name}</strong></p>
+      <form id="optionsForm" style="margin-top: 1rem;">
+        <div style="margin-bottom: 1rem;">
+          <label for="cartSize">Taille/Modèle :</label>
+          <select id="cartSize" name="size" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+            <option value="">Sélectionner</option>
+            ${sizeOptions.map(s => `<option value="${s}">${s}</option>`).join("")}
+          </select>
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label for="cartColor">Couleur :</label>
+          <select id="cartColor" name="color" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+            <option value="">Sélectionner</option>
+            ${COLORS.map(c => `<option value="${c}">${c}</option>`).join("")}
+          </select>
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label for="cartQty">Quantité :</label>
+          <input type="number" id="cartQty" name="qty" min="1" value="1" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;">
+        </div>
+        <button type="submit" id="submitOptions" style="width: 100%; background: #10b981; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500;">
+          Ajouter au panier
+        </button>
+        <button type="button" id="closeOptions" style="width: 100%; background: #6b7280; color: white; padding: 0.75rem; border: none; border-radius: 0.375rem; cursor: pointer; font-weight: 500; margin-top: 0.5rem;">
+          Annuler
+        </button>
       </form>
     </div>
   `;
+  
   document.body.appendChild(modal);
   
   const closeOptions = document.getElementById("closeOptions");
@@ -646,8 +665,8 @@ function addProductToCart(product, size, color, quantity) {
       key,
       id: product.id,
       name: product.name,
-      price: product.price,
-      image: product.images[0],
+      price: product.price || 0,
+      image: product.images?.[0] || '',
       quantity,
       size,
       color
@@ -686,7 +705,7 @@ function updateCartUI() {
   const cartTotal = document.getElementById("cartTotal");
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   if (cartCount) cartCount.textContent = totalItems;
   if (cartTotal) cartTotal.textContent = totalPrice.toFixed(2);
@@ -710,7 +729,7 @@ function updateCartUI() {
         <div class="cart-item-info">
           <div class="cart-item-name">${item.name}</div>
           <div style="font-size:0.9em;color:#666;">${item.size ? `Taille/Modèle: <b>${item.size}</b>, ` : ''}Couleur: <b>${item.color}</b></div>
-          <div class="cart-item-price">$${item.price.toFixed(2)}</div>
+          <div class="cart-item-price">$${item.price?.toFixed(2) || '0.00'}</div>
           <div class="quantity-controls">
             <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity - 1})">-</button>
             <span>${item.quantity}</span>
@@ -749,7 +768,7 @@ function removeFromCart(key) {
 function openNatcashModal() {
   // Vérifier si le panier n'est pas vide
   if (cart.length === 0) {
-    alert("Votre panier est vide");
+    showCartNotification("Votre panier est vide");
     return;
   }
   
@@ -931,9 +950,6 @@ async function verifyNatcashPayment(transferId, phoneNumber, orderData) {
       }
     }
     
-    // 5. Envoyer une notification (simulée)
-    await sendOrderConfirmationEmail(orderData, orderData.orderId);
-    
     return { 
       success: true, 
       message: "✅ Paiement vérifié ! Votre commande est confirmée." 
@@ -996,29 +1012,6 @@ function closeOrderConfirmation() {
   if (overlay) overlay.classList.remove("active");
 }
 
-// Fonction simulée d'envoi d'email
-async function sendOrderConfirmationEmail(orderData, orderId) {
-  // Dans une application réelle, vous utiliseriez un service d'email
-  console.log("=== EMAIL DE CONFIRMATION ENVOYÉ ===");
-  console.log("À: ", orderData.customerEmail || "Non spécifié");
-  console.log("Sujet: Confirmation de votre commande MarcShop");
-  console.log("Contenu:");
-  console.log(`Bonjour ${orderData.customerName},`);
-  console.log("Merci pour votre commande ! Voici le récapitulatif :");
-  console.log("Numéro de commande: ", orderId);
-  console.log("Articles:");
-  orderData.products.forEach(item => {
-    console.log(`- ${item.quantity}x ${item.name} (${item.size || 'N/A'}, ${item.color || 'N/A'}) - $${item.price.toFixed(2)}`);
-  });
-  console.log("Total: $", orderData.amount.toFixed(2));
-  console.log("Méthode de paiement: NatCash");
-  console.log("ID Transfert NatCash: ", orderData.natcashTransferId || "Non fourni");
-  console.log("Numéro NatCash: ", orderData.natcashPhone || "Non fourni");
-  console.log("================================");
-  
-  return true;
-}
-
 function filterByCategory(category) {
   document.querySelectorAll(".category-btn").forEach((btn) => {
     btn.classList.remove("active");
@@ -1050,15 +1043,6 @@ function closeAllPanels() {
   if (orderConfirmation) orderConfirmation.style.display = 'none';
 }
 
-function switchTab(tabName) {
-  document.querySelectorAll(".tab-btn").forEach((btn) => btn.classList.remove("active"));
-  document.querySelectorAll(".tab-content").forEach((content) => content.classList.remove("active"));
-  const tabBtn = document.querySelector(`[data-tab="${tabName}"]`);
-  const tabContent = document.getElementById(`${tabName}Tab`);
-  if (tabBtn) tabBtn.classList.add("active");
-  if (tabContent) tabContent.classList.add("active");
-}
-
 function shareWebsite() {
   const url = window.location.href;
   const text = "Découvrez MarcShop - La meilleure boutique en ligne pour tous vos besoins!";
@@ -1070,7 +1054,3 @@ function shareWebsite() {
     });
   }
 }
-
-// Rendre les fonctions globales accessibles
-window.closeOrderConfirmation = closeOrderConfirmation;
-window.openProductOptions = openProductOptions;
