@@ -1,4 +1,3 @@
-// Import des fonctions Firebase
 import { 
   collection, 
   addDoc, 
@@ -9,19 +8,10 @@ import {
   query,
   where,
   getDocs,
-  orderBy,
   serverTimestamp
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
-import { 
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  updateProfile
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-// Initialisation Firebase
 const db = window.firebaseDB;
-const auth = window.firebaseAuth;
 
 let currentUser = null;
 let products = [];
@@ -34,6 +24,15 @@ let currentImageIndex = 0;
 let isAddingToCart = false;
 let searchTerm = '';
 let currentCategory = 'all';
+let activityIntervalId = null;
+
+// Configuration NatCash
+const NATCASH_CONFIG = {
+  merchantNumber: "50942557123", // Votre numéro NatCash marchand
+  collectionName: "natcash_payments",
+  ordersCollection: "orders",
+  cartsCollection: "carts"
+};
 
 // Options par catégorie
 const SIZE_OPTIONS = {
@@ -47,9 +46,6 @@ const SIZE_OPTIONS = {
 
 const COLORS = ["Blanc", "Noir", "Rouge", "Bleu", "Vert", "Jaune", "Rose", "Violet", "Orange", "Gris", "Marron", "Beige"];
 
-// Configuration NatCash
-const NATCASH_BUSINESS_NUMBER = "50942557123";
-
 document.addEventListener("DOMContentLoaded", () => {
   loadFirestoreProducts();
   loadFirestoreUsers();
@@ -57,24 +53,75 @@ document.addEventListener("DOMContentLoaded", () => {
   checkUserRegistration();
   setupEventListeners();
   setupLightbox();
+  
+  // RENDRE LES FONCTIONS GLOBALES POUR LES ONCLICK HTML
+  window.toggleCart = toggleCart;
+  window.openLightbox = openLightbox;
+  window.addToCart = addToCart;
+  window.updateQuantity = updateQuantity;
+  window.removeFromCart = removeFromCart;
 });
 
 function loadFirestoreProducts() {
-  const productsCol = collection(db, "products");
-  const q = query(productsCol, orderBy("createdAt", "desc"));
-  
-  onSnapshot(q, (snapshot) => {
-    allProducts = snapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id
-    }));
-    
-    // Mélanger aléatoirement les produits
-    products = shuffleArray([...allProducts]);
-    
-    // Appliquer les filtres actuels (recherche et catégorie)
-    applyFilters();
-  });
+  try {
+    const productsCol = collection(db, "products");
+    onSnapshot(productsCol, 
+      (snapshot) => {
+        allProducts = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        }));
+        
+        // Mélanger aléatoirement les produits
+        products = shuffleArray([...allProducts]);
+        
+        // Appliquer les filtres actuels (recherche et catégorie)
+        applyFilters();
+      },
+      (error) => {
+        console.error("Erreur Firestore products:", error);
+        showFirestoreError("Impossible de charger les produits. Vérifiez votre connexion Internet.");
+      }
+    );
+  } catch (error) {
+    console.error("Erreur initialisation Firestore products:", error);
+    showFirestoreError("Erreur de connexion à la base de données.");
+  }
+}
+
+function loadFirestoreUsers() {
+  try {
+    const usersCol = collection(db, "users");
+    onSnapshot(usersCol, 
+      (snapshot) => {
+        users = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        }));
+      },
+      (error) => {
+        console.error("Erreur Firestore users:", error);
+      }
+    );
+  } catch (error) {
+    console.error("Erreur initialisation Firestore users:", error);
+  }
+}
+
+// Fonction pour afficher les erreurs Firestore
+function showFirestoreError(message) {
+  const grid = document.getElementById("productsGrid");
+  if (grid) {
+    grid.innerHTML = `
+      <div class="error-message" style="text-align: center; padding: 2rem; color: #ef4444;">
+        <h3>😕 Problème de connexion</h3>
+        <p>${message}</p>
+        <button onclick="location.reload()" style="background: #3b82f6; color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.375rem; cursor: pointer; margin-top: 1rem;">
+          Actualiser la page
+        </button>
+      </div>
+    `;
+  }
 }
 
 function shuffleArray(array) {
@@ -85,41 +132,118 @@ function shuffleArray(array) {
   return array;
 }
 
-function loadFirestoreUsers() {
-  const usersCol = collection(db, "users");
-  onSnapshot(usersCol, (snapshot) => {
-    users = snapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id
-    }));
-  });
-}
-
 function loadCart() {
   try {
-    const savedCart = localStorage.getItem("marcshop-cart");
-    const savedUser = localStorage.getItem("marcshop-current-user");
+    const cartData = localStorage.getItem("marcshop-cart");
+    const userData = localStorage.getItem("marcshop-current-user");
+    cart = cartData ? JSON.parse(cartData) : [];
+    currentUser = userData ? JSON.parse(userData) : null;
     
-    if (savedCart) {
-      cart = JSON.parse(savedCart);
-    } else {
-      cart = [];
-    }
-    
-    if (savedUser) {
-      currentUser = JSON.parse(savedUser);
+    // Démarrer le suivi d'activité si l'utilisateur est connecté
+    if (currentUser) {
+      setupUserActivityTracking();
     }
   } catch (e) {
-    console.error("Erreur lors du chargement du panier:", e);
+    console.error("Error parsing cart or user data from localStorage", e);
     cart = [];
+    currentUser = null;
   }
   updateCartUI();
+  
+  // Synchroniser le panier avec Firestore si l'utilisateur est connecté
+  if (currentUser) {
+    syncCartToFirestore();
+  }
+}
+
+// Synchroniser le panier avec Firestore
+async function syncCartToFirestore() {
+  if (!currentUser) return;
+  
+  try {
+    // Vérifier si l'utilisateur a déjà un panier dans Firestore
+    const cartsQuery = query(collection(db, NATCASH_CONFIG.cartsCollection), where("userId", "==", currentUser.id));
+    const querySnapshot = await getDocs(cartsQuery);
+    
+    if (!querySnapshot.empty) {
+      // Mettre à jour le panier existant
+      const cartDoc = querySnapshot.docs[0];
+      await updateDoc(doc(db, NATCASH_CONFIG.cartsCollection, cartDoc.id), {
+        items: cart,
+        totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
+        lastUpdated: new Date().toISOString()
+      });
+    } else {
+      // Créer un nouveau panier
+      await addDoc(collection(db, NATCASH_CONFIG.cartsCollection), {
+        userId: currentUser.id,
+        items: cart,
+        totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    console.error("Erreur synchronisation panier:", error);
+  }
+}
+
+// Mettre à jour l'activité de l'utilisateur
+async function updateUserActivity() {
+  if (!currentUser) return;
+  
+  try {
+    const userRef = doc(db, "users", currentUser.id);
+    await updateDoc(userRef, {
+      lastActivity: new Date().toISOString(),
+      isOnline: true
+    });
+  } catch (error) {
+    console.error("Erreur mise à jour activité:", error);
+  }
+}
+
+// Configurer le suivi d'activité de l'utilisateur
+function setupUserActivityTracking() {
+  if (!currentUser) return;
+  
+  // Mettre à jour l'activité immédiatement
+  updateUserActivity();
+  
+  // Nettoyer l'ancien intervalle s'il existe
+  if (activityIntervalId) {
+    clearInterval(activityIntervalId);
+  }
+  
+  // Mettre à jour l'activité toutes les minutes
+  activityIntervalId = setInterval(updateUserActivity, 60000);
+  
+  // Mettre à jour l'activité lorsque la page devient visible
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      updateUserActivity();
+    }
+  });
+  
+  // Mettre isOnline à false lorsque l'utilisateur quitte la page
+  window.addEventListener('beforeunload', async () => {
+    if (currentUser) {
+      try {
+        const userRef = doc(db, "users", currentUser.id);
+        await updateDoc(userRef, { isOnline: false });
+      } catch (error) {
+        console.error("Erreur mise à jour statut hors ligne:", error);
+      }
+    }
+  });
 }
 
 function saveCart() {
   localStorage.setItem("marcshop-cart", JSON.stringify(cart));
   if (currentUser) {
     localStorage.setItem("marcshop-current-user", JSON.stringify(currentUser));
+    updateUserActivity();
+    syncCartToFirestore();
   }
   updateCartUI();
 }
@@ -127,64 +251,124 @@ function saveCart() {
 function checkUserRegistration() {
   if (!currentUser) {
     setTimeout(() => {
-      document.getElementById("registrationModal").classList.add("active");
+      const registrationModal = document.getElementById("registrationModal");
+      if (registrationModal) {
+        registrationModal.classList.add("active");
+      }
     }, 1000);
   } else {
+    const registrationModal = document.getElementById("registrationModal");
+    if (registrationModal) {
+      registrationModal.classList.remove("active");
+    }
     displayUserName();
   }
 }
 
 function setupEventListeners() {
-  document.getElementById("registrationForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const name = document.getElementById("userName").value.trim();
-    const email = document.getElementById("userEmail").value.trim();
-    const phone = document.getElementById("userPhone").value.trim();
-    
-    if (name && email && phone) {
-      await registerUser(name, email, phone);
-    }
-  });
-
-  document.getElementById("shareBtn").addEventListener("click", shareWebsite);
-  document.getElementById("profileBtn").addEventListener("click", showUserProfile);
-  document.getElementById("cartBtn").addEventListener("click", toggleCart);
-  document.getElementById("closeCartBtn").addEventListener("click", toggleCart);
-
-  document.querySelectorAll(".category-btn").forEach((btn) => {
-    btn.addEventListener("click", function () {
-      document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
-      this.classList.add("active");
-      currentCategory = this.dataset.category;
-      filterByCategory(this.dataset.category);
-    });
-  });
-
-  document.getElementById("overlay").addEventListener("click", () => {
-    closeAllPanels();
-  });
-  
-  // Recherche de produits
+  // Vérification robuste de tous les éléments avant d'ajouter des event listeners
+  const registrationForm = document.getElementById("registrationForm");
+  const shareBtn = document.getElementById("shareBtn");
+  const userLogo = document.querySelector(".user-logo");
+  const profileBtn = document.getElementById("profileBtn");
+  const overlay = document.getElementById("overlay");
   const searchInput = document.getElementById("searchInput");
   const clearSearch = document.getElementById("clearSearch");
-  
-  searchInput.addEventListener("input", (e) => {
-    searchTerm = e.target.value.toLowerCase().trim();
-    clearSearch.style.display = searchTerm ? 'block' : 'none';
-    applyFilters();
-  });
-  
-  clearSearch.addEventListener("click", () => {
-    searchInput.value = '';
-    searchTerm = '';
-    clearSearch.style.display = 'none';
-    applyFilters();
-  });
-  
+  const searchIcon = document.getElementById("searchIcon");
+  const natcashPaymentBtn = document.getElementById("natcash-payment-btn");
+  const natcashForm = document.getElementById("natcashForm");
+  const cancelNatcash = document.getElementById("cancelNatcash");
+
+  // Formulaire d'inscription
+  if (registrationForm) {
+    registrationForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("userName")?.value.trim();
+      const email = document.getElementById("userEmail")?.value.trim();
+      const phone = document.getElementById("userPhone")?.value.trim();
+      if (name && email && phone) {
+        await registerUser(name, email, phone);
+      }
+    });
+  } else {
+    console.warn("Élément #registrationForm introuvable");
+  }
+
+  // Bouton de partage
+  if (shareBtn) {
+    shareBtn.addEventListener("click", shareWebsite);
+  } else {
+    console.warn("Élément #shareBtn introuvable");
+  }
+
+  // Logo utilisateur et profil
+  if (userLogo) {
+    userLogo.addEventListener("click", showUserProfile);
+  }
+  if (profileBtn) {
+    profileBtn.addEventListener("click", showUserProfile);
+  }
+
+  // Boutons de catégorie
+  const categoryButtons = document.querySelectorAll(".category-btn");
+  if (categoryButtons.length > 0) {
+    categoryButtons.forEach((btn) => {
+      btn.addEventListener("click", function () {
+        currentCategory = this.dataset.category;
+        filterByCategory(this.dataset.category);
+      });
+    });
+  } else {
+    console.warn("Aucun bouton .category-btn trouvé");
+  }
+
+  // Overlay
+  if (overlay) {
+    overlay.addEventListener("click", () => {
+      closeAllPanels();
+    });
+  }
+
+  // Recherche de produits
+  if (searchInput && clearSearch && searchIcon) {
+    searchInput.addEventListener("input", (e) => {
+      searchTerm = e.target.value.toLowerCase().trim();
+      clearSearch.style.display = searchTerm ? 'block' : 'none';
+      applyFilters();
+    });
+    
+    clearSearch.addEventListener("click", () => {
+      searchInput.value = '';
+      searchTerm = '';
+      clearSearch.style.display = 'none';
+      applyFilters();
+    });
+    
+    searchIcon.addEventListener("click", () => {
+      applyFilters();
+    });
+  } else {
+    console.warn("Éléments de recherche introuvables");
+  }
+
   // Événements pour NatCash
-  document.getElementById("natcash-payment-btn").addEventListener("click", openNatcashModal);
-  document.getElementById("natcashForm").addEventListener("submit", processNatcashPayment);
-  document.getElementById("cancelNatcash").addEventListener("click", closeNatcashModal);
+  if (natcashPaymentBtn) {
+    natcashPaymentBtn.addEventListener("click", openNatcashModal);
+  } else {
+    console.warn("Élément #natcash-payment-btn introuvable");
+  }
+
+  if (natcashForm) {
+    natcashForm.addEventListener("submit", processNatcashPayment);
+  } else {
+    console.warn("Élément #natcashForm introuvable");
+  }
+
+  if (cancelNatcash) {
+    cancelNatcash.addEventListener("click", closeNatcashModal);
+  } else {
+    console.warn("Élément #cancelNatcash introuvable");
+  }
 }
 
 function applyFilters() {
@@ -208,15 +392,26 @@ function applyFilters() {
 
 function setupLightbox() {
   const lightbox = document.getElementById("productLightbox");
+  if (!lightbox) {
+    console.warn("Élément #productLightbox introuvable");
+    return;
+  }
+
   const closeBtn = lightbox.querySelector(".close");
   const prevBtn = lightbox.querySelector(".prev");
   const nextBtn = lightbox.querySelector(".next");
   
-  closeBtn.addEventListener("click", closeLightbox);
-  prevBtn.addEventListener("click", () => changeImage(-1));
-  nextBtn.addEventListener("click", () => changeImage(1));
+  if (closeBtn) {
+    closeBtn.addEventListener("click", closeLightbox);
+  }
+  if (prevBtn) {
+    prevBtn.addEventListener("click", () => changeImage(-1));
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener("click", () => changeImage(1));
+  }
   
-  lightbox.addEventListener("click", (e) => {
+  window.addEventListener("click", (e) => {
     if (e.target === lightbox) closeLightbox();
   });
 }
@@ -224,32 +419,37 @@ function setupLightbox() {
 function openLightbox(productId, imgIndex = 0) {
   const product = products.find(p => p.id === productId);
   if (!product || !product.images || product.images.length === 0) return;
-  
   currentProductImages = product.images;
   currentImageIndex = imgIndex;
   const lightboxImg = document.getElementById("lightboxImage");
   const descriptionDiv = document.getElementById("lightboxDescription");
   
+  if (!lightboxImg) return;
+  
   lightboxImg.src = currentProductImages[currentImageIndex];
   
   // Afficher la description du produit si elle existe
-  if (product.description) {
+  if (product.description && descriptionDiv) {
     descriptionDiv.innerHTML = `
       <h3>${product.name}</h3>
       <p>${product.description}</p>
     `;
     descriptionDiv.style.display = 'block';
-  } else {
+  } else if (descriptionDiv) {
     descriptionDiv.style.display = 'none';
   }
   
-  document.getElementById("productLightbox").style.display = "block";
-  document.getElementById("overlay").classList.add("active");
+  const lightbox = document.getElementById("productLightbox");
+  const overlay = document.getElementById("overlay");
+  if (lightbox) lightbox.style.display = "block";
+  if (overlay) overlay.classList.add("active");
 }
 
 function closeLightbox() {
-  document.getElementById("productLightbox").style.display = "none";
-  document.getElementById("overlay").classList.remove("active");
+  const lightbox = document.getElementById("productLightbox");
+  const overlay = document.getElementById("overlay");
+  if (lightbox) lightbox.style.display = "none";
+  if (overlay) overlay.classList.remove("active");
 }
 
 function changeImage(direction) {
@@ -260,50 +460,50 @@ function changeImage(direction) {
     currentImageIndex = 0;
   }
   const lightboxImg = document.getElementById("lightboxImage");
-  lightboxImg.src = currentProductImages[currentImageIndex];
-}
-
-async function registerUser(name, email, phone) {
-  try {
-    // Créer l'utilisateur avec email et mot de passe
-    const userCredential = await createUserWithEmailAndPassword(auth, email, generatePassword());
-    const user = userCredential.user;
-    
-    // Mettre à jour le profil avec le nom
-    await updateProfile(user, { displayName: name });
-    
-    // Créer le document utilisateur dans Firestore
-    const newUser = {
-      uid: user.uid,
-      name: name,
-      email: email,
-      phone: phone,
-      registeredAt: serverTimestamp(),
-      isActive: true,
-      lastActivity: serverTimestamp(),
-    };
-    
-    const userRef = await addDoc(collection(db, "users"), newUser);
-    newUser.id = userRef.id;
-    currentUser = newUser;
-    
-    saveCart();
-    displayUserName();
-    
-    document.getElementById("registrationModal").classList.remove("active");
-  } catch (error) {
-    console.error("Erreur lors de l'inscription:", error);
-    alert("Erreur lors de l'inscription. Réessayez.");
+  if (lightboxImg) {
+    lightboxImg.src = currentProductImages[currentImageIndex];
   }
 }
 
-function generatePassword() {
-  return Math.random().toString(36).slice(-8) + "A1!"; // Mot de passe aléatoire avec caractères spéciaux
+async function registerUser(name, email, phone) {
+  const newUser = {
+    name: name,
+    email: email,
+    phone: phone,
+    registeredAt: new Date().toISOString(),
+    isActive: true,
+    lastActivity: new Date().toISOString(),
+    isOnline: true
+  };
+  try {
+    const ref = await addDoc(collection(db, "users"), newUser);
+    newUser.id = ref.id;
+    currentUser = newUser;
+    saveCart();
+    displayUserName();
+    
+    // Démarrer le suivi d'activité pour le nouvel utilisateur
+    setupUserActivityTracking();
+    
+    // Créer un panier Firestore pour le nouvel utilisateur
+    await syncCartToFirestore();
+    
+    const registrationModal = document.getElementById("registrationModal");
+    if (registrationModal) {
+      registrationModal.classList.remove("active");
+    }
+  } catch (e) {
+    alert("Erreur lors de l'inscription. Réessayez.");
+    console.error(e);
+  }
 }
 
 function displayUserName() {
   const name = currentUser && currentUser.name ? currentUser.name : "MarcShop";
-  document.getElementById("userNameDisplay").textContent = name;
+  const userNameDisplay = document.getElementById("userNameDisplay");
+  if (userNameDisplay) {
+    userNameDisplay.textContent = name;
+  }
 }
 
 function showUserProfile() {
@@ -313,6 +513,7 @@ function showUserProfile() {
 
 function renderProducts() {
   const grid = document.getElementById("productsGrid");
+  if (!grid) return;
   
   if (filteredProducts.length === 0) {
     grid.innerHTML = `
@@ -328,8 +529,7 @@ function renderProducts() {
     const discount = product.originalPrice > 0 ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
     const rating = 4.0 + Math.random() * 1.0;
     const reviews = Math.floor(Math.random() * 1000) + 100;
-    const firstImage = product.images && product.images[0] ? product.images[0] : "https://via.placeholder.com/200?text=Image+Manquante";
-    
+    const firstImage = product.images[0] || "https://via.placeholder.com/200?text=Image+Manquante";
     return `
       <div class="product-card" data-category="${product.category}">
         <div class="product-image" onclick="openLightbox('${product.id}')">
@@ -347,7 +547,7 @@ function renderProducts() {
             <span class="current-price">$${product.price.toFixed(2)}</span>
             ${product.originalPrice > 0 ? `<span class="original-price">$${product.originalPrice.toFixed(2)}</span>` : ''}
           </div>
-          <button class="add-to-cart" onclick="addToCart('${product.id}')">
+          <button class="add-to-cart" onclick="addToCart('${product.id}'); event.stopPropagation()">
             <i class="fas fa-shopping-cart"></i> Ajouter
           </button>
         </div>
@@ -368,7 +568,9 @@ function addToCart(productId) {
 
 function openProductOptions(product) {
   const overlay = document.getElementById("overlay");
-  overlay.classList.add("active");
+  if (overlay) {
+    overlay.classList.add("active");
+  }
   
   // Déterminer les options de taille en fonction de la catégorie
   const category = product.category || 'default';
@@ -402,29 +604,35 @@ function openProductOptions(product) {
   `;
   document.body.appendChild(modal);
   
-  document.getElementById("closeOptions").onclick = () => {
-    modal.remove(); 
-    overlay.classList.remove("active");
-    isAddingToCart = false;
-  };
+  const closeOptions = document.getElementById("closeOptions");
+  if (closeOptions) {
+    closeOptions.onclick = () => {
+      modal.remove(); 
+      if (overlay) overlay.classList.remove("active");
+      isAddingToCart = false;
+    };
+  }
   
-  document.getElementById("optionsForm").onsubmit = function(e) {
-    e.preventDefault();
-    const form = e.target;
-    const submitBtn = document.getElementById("submitOptions");
-    submitBtn.disabled = true;
-    
-    // Récupération correcte des valeurs
-    const size = form.elements.size.value;
-    const color = form.elements.color.value;
-    const qty = parseInt(form.elements.qty.value) || 1;
-    
-    addProductToCart(product, size, color, qty);
-    
-    modal.remove();
-    overlay.classList.remove("active");
-    isAddingToCart = false;
-  };
+  const optionsForm = document.getElementById("optionsForm");
+  if (optionsForm) {
+    optionsForm.onsubmit = function(e) {
+      e.preventDefault();
+      const form = e.target;
+      const submitBtn = document.getElementById("submitOptions");
+      if (submitBtn) submitBtn.disabled = true;
+      
+      // Récupération correcte des valeurs
+      const size = form.elements.size.value;
+      const color = form.elements.color.value;
+      const qty = parseInt(form.elements.qty.value) || 1;
+      
+      addProductToCart(product, size, color, qty);
+      
+      modal.remove();
+      if (overlay) overlay.classList.remove("active");
+      isAddingToCart = false;
+    };
+  }
 }
 
 function addProductToCart(product, size, color, quantity) {
@@ -480,8 +688,10 @@ function updateCartUI() {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  cartCount.textContent = totalItems;
-  cartTotal.textContent = totalPrice.toFixed(2);
+  if (cartCount) cartCount.textContent = totalItems;
+  if (cartTotal) cartTotal.textContent = totalPrice.toFixed(2);
+
+  if (!cartItems) return;
 
   if (cart.length === 0) {
     cartItems.innerHTML = `
@@ -490,9 +700,9 @@ function updateCartUI() {
         <p>Votre panier est vide</p>
       </div>
     `;
-    const paypalDiv = document.getElementById("paypal-button-container");
-    if (paypalDiv) paypalDiv.innerHTML = '';
-    document.getElementById("natcash-payment-btn").style.display = 'none';
+    
+    const natcashBtn = document.getElementById("natcash-payment-btn");
+    if (natcashBtn) natcashBtn.style.display = 'none';
   } else {
     cartItems.innerHTML = cart.map(item => `
       <div class="cart-item">
@@ -513,29 +723,9 @@ function updateCartUI() {
       </div>
     `).join("");
     
-    // Ajouter le formulaire d'adresse si nécessaire
-    if (!document.getElementById("addressForm")) {
-      const addressFormHTML = `
-        <div id="addressForm" style="margin-top: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 0.5rem;">
-          <h4 style="margin-bottom: 1rem;">Adresse de livraison</h4>
-          <div class="form-group">
-            <label for="shippingAddress">Adresse complète</label>
-            <textarea id="shippingAddress" rows="3" placeholder="Entrez votre adresse complète pour la livraison" required></textarea>
-          </div>
-        </div>
-      `;
-      cartItems.insertAdjacentHTML('beforeend', addressFormHTML);
-    }
-    
     // Afficher le bouton NatCash
-    document.getElementById("natcash-payment-btn").style.display = 'block';
-    
-    // Gestion PayPal améliorée
-    setTimeout(() => {
-      if (totalPrice > 0) {
-        renderPaypalButton(totalPrice);
-      }
-    }, 300);
+    const natcashBtn = document.getElementById("natcash-payment-btn");
+    if (natcashBtn) natcashBtn.style.display = 'block';
   }
 }
 
@@ -555,279 +745,275 @@ function removeFromCart(key) {
   saveCart();
 }
 
-function renderPaypalButton(totalPrice) {
-  if (!window.paypal) {
-    console.warn("PayPal SDK non chargé");
-    return;
-  }
-  
-  const container = document.getElementById("paypal-button-container");
-  if (!container) return;
-  
-  // Réinitialiser complètement le conteneur
-  container.innerHTML = "";
-  
-  // Vérifier que le montant est valide
-  if (typeof totalPrice !== 'number' || totalPrice <= 0) {
-    console.error("Montant PayPal invalide:", totalPrice);
-    return;
-  }
-
-  try {
-    window.paypal.Buttons({
-      style: { 
-        layout: 'vertical', 
-        color: 'gold', 
-        shape: 'rect', 
-        label: 'paypal' 
-      },
-      createOrder: function(data, actions) {
-        return actions.order.create({
-          purchase_units: [{
-            amount: { 
-              value: totalPrice.toFixed(2),
-              currency_code: "USD"
-            }
-          }]
-        });
-      },
-      onApprove: function(data, actions) {
-        return actions.order.capture().then(async function(details) {
-          // Récupérer l'adresse de livraison
-          const shippingAddress = document.getElementById("shippingAddress")?.value || "Non spécifiée";
-          
-          // Créer la commande dans Firestore
-          await createOrder(details, shippingAddress, 'paypal');
-          
-          alert('Paiement réussi, merci ' + details.payer.name.given_name + ' ! Un reçu a été envoyé à votre email.');
-          cart = [];
-          saveCart();
-        });
-      },
-      onError: function(err) {
-        console.error("Erreur PayPal:", err);
-        // Réessayer après un délai
-        setTimeout(() => renderPaypalButton(totalPrice), 1000);
-      },
-      onCancel: function(data) {
-        console.log("Paiement annulé");
-      }
-    }).render('#paypal-button-container');
-  } catch (e) {
-    console.error("Erreur initialisation PayPal:", e);
-  }
-}
-
 // Ouvrir le modal NatCash
 function openNatcashModal() {
-  const shippingAddress = document.getElementById("shippingAddress")?.value;
-  if (!shippingAddress) {
-    alert("Veuillez entrer votre adresse de livraison avant de payer.");
+  // Vérifier si le panier n'est pas vide
+  if (cart.length === 0) {
+    alert("Votre panier est vide");
     return;
   }
   
   const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  document.getElementById("natcashAmount").textContent = totalPrice.toFixed(2) + " €";
-  document.getElementById("natcashBusinessNumber").textContent = NATCASH_BUSINESS_NUMBER;
-  document.getElementById("natcashModal").classList.add("active");
-  document.getElementById("overlay").classList.add("active");
+  
+  const natcashAmount = document.getElementById("natcashAmount");
+  const natcashBusinessNumber = document.getElementById("natcashBusinessNumber");
+  const natcashModal = document.getElementById("natcashModal");
+  const overlay = document.getElementById("overlay");
+  
+  if (natcashAmount) natcashAmount.textContent = totalPrice.toFixed(2) + " $";
+  if (natcashBusinessNumber) natcashBusinessNumber.textContent = NATCASH_CONFIG.merchantNumber;
+  if (natcashModal) natcashModal.style.display = 'flex';
+  if (overlay) overlay.classList.add("active");
 }
 
 // Fermer le modal NatCash
 function closeNatcashModal() {
-  document.getElementById("natcashModal").classList.remove("active");
-  document.getElementById("overlay").classList.remove("active");
-  document.getElementById("natcashSuccess").style.display = 'none';
-  document.getElementById("natcashProgress").style.display = 'none';
+  const natcashModal = document.getElementById("natcashModal");
+  const overlay = document.getElementById("overlay");
   
-  // Réinitialiser les indicateurs de progression
-  document.getElementById("natcashStep1").textContent = "⏳";
-  document.getElementById("natcashStep2").textContent = "⏳";
-  document.getElementById("natcashStep3").textContent = "⏳";
-}
-
-// Fonction pour mettre à jour les indicateurs de progression
-function updateNatcashProgress(step, status) {
-  const stepElement = document.getElementById(`natcashStep${step}`);
-  if (!stepElement) return;
+  if (natcashModal) natcashModal.style.display = 'none';
+  if (overlay) overlay.classList.remove("active");
   
-  if (status === 'completed') {
-    stepElement.innerHTML = '✅';
-    stepElement.classList.add('status-completed');
-  } else if (status === 'failed') {
-    stepElement.innerHTML = '❌';
-    stepElement.classList.add('status-failed');
-  } else if (status === 'processing') {
-    stepElement.innerHTML = '⏳';
-  }
+  // Réinitialiser le formulaire
+  const natcashForm = document.getElementById("natcashForm");
+  if (natcashForm) natcashForm.reset();
+  
+  // Réinitialiser les messages
+  const natcashResult = document.getElementById("natcashResult");
+  if (natcashResult) natcashResult.innerHTML = '';
 }
 
 // Traiter le paiement NatCash
 async function processNatcashPayment(e) {
   e.preventDefault();
   
-  const phone = document.getElementById("natcashPhone").value;
-  const transactionId = document.getElementById("natcashTransaction").value;
-  const shippingAddress = document.getElementById("shippingAddress").value;
+  const transferId = document.getElementById("natcashTransferId")?.value.trim();
+  const phoneNumber = document.getElementById("natcashPhone")?.value.trim();
   
-  if (!phone) {
-    alert("Veuillez entrer votre numéro NatCash.");
+  if (!transferId || !phoneNumber) {
+    showNatcashResult("❌ Veuillez remplir tous les champs.", 'error');
     return;
   }
   
-  if (!shippingAddress) {
-    alert("Veuillez entrer votre adresse de livraison.");
+  // Valider le format du numéro NatCash
+  if (!/^6[0-9]{8}$/.test(phoneNumber)) {
+    showNatcashResult("❌ Numéro invalide. Format: 6XXXXXXXX", 'error');
     return;
   }
   
-  // Afficher les indicateurs de progression
-  document.getElementById("natcashProgress").style.display = 'block';
-  updateNatcashProgress(1, 'processing');
+  // Valider le format de l'ID de transfert
+  if (!/^[A-Z0-9]{8,20}$/i.test(transferId)) {
+    showNatcashResult("❌ Format d'ID de transfert invalide. Il doit contenir 8-20 caractères alphanumériques.", 'error');
+    return;
+  }
   
-  // Désactiver le bouton pour éviter les doubles clics
+  const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  // Récupérer les informations utilisateur
+  const userInfo = currentUser || {
+    name: 'Client NatCash',
+    email: '',
+    phone: phoneNumber
+  };
+  
+  // Préparer les données de commande
+  const orderData = {
+    orderId: generateOrderId(),
+    customerName: userInfo.name,
+    customerEmail: userInfo.email,
+    customerPhone: userInfo.phone || phoneNumber,
+    amount: totalAmount,
+    products: cart.map(item => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      image: item.image,
+      size: item.size,
+      color: item.color
+    })),
+    totalItems: cart.reduce((sum, item) => sum + item.quantity, 0)
+  };
+  
+  // Désactiver le bouton de soumission
   const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn.innerHTML;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification...';
   submitBtn.disabled = true;
-  submitBtn.textContent = "Traitement en cours...";
   
   try {
-    // Récupérer le total du panier
-    const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    // Vérifier le paiement NatCash
+    const result = await verifyNatcashPayment(transferId, phoneNumber, orderData);
     
-    // 1. Vérification du paiement NatCash
-    updateNatcashProgress(1, 'processing');
-    const paymentVerified = await verifyNatcashPayment(phone, transactionId, totalAmount);
-    updateNatcashProgress(1, paymentVerified ? 'completed' : 'failed');
-    
-    if (!paymentVerified) {
-      throw new Error("Paiement NatCash non vérifié");
-    }
-    
-    // 2. Transfert vers PayPal
-    updateNatcashProgress(2, 'processing');
-    const transferSuccess = await transferToPaypal(totalAmount, `Commande NatCash ${transactionId || phone}`);
-    updateNatcashProgress(2, transferSuccess ? 'completed' : 'failed');
-    
-    if (!transferSuccess) {
-      throw new Error("Échec du transfert vers PayPal");
-    }
-    
-    // 3. Création de la commande
-    updateNatcashProgress(3, 'processing');
-    const orderId = await createOrder({
-      id: transactionId || 'NATCASH-' + Date.now(),
-      payer: {
-        name: currentUser.name,
-        email: currentUser.email
-      }
-    }, shippingAddress, 'natcash', phone, transactionId);
-    updateNatcashProgress(3, 'completed');
-    
-    // Afficher le message de succès
-    document.getElementById("natcashSuccess").style.display = 'block';
-    
-    // Vider le panier après un délai
-    setTimeout(() => {
+    if (result.success) {
+      showNatcashResult(result.message, 'success');
+      
+      // Vider le panier
       cart = [];
       saveCart();
-      alert("Paiement NatCash confirmé! Le transfert vers PayPal a été effectué avec succès. Numéro de commande: " + orderId);
-      closeNatcashModal();
-    }, 3000);
+      
+      // Fermer les modaux après 2 secondes
+      setTimeout(() => {
+        closeNatcashModal();
+        toggleCart();
+        
+        // Afficher la confirmation de commande
+        showOrderConfirmation(orderData);
+      }, 2000);
+    } else {
+      showNatcashResult(result.message, 'error');
+      submitBtn.innerHTML = originalText;
+      submitBtn.disabled = false;
+    }
   } catch (error) {
     console.error("Erreur traitement paiement NatCash:", error);
-    alert("Une erreur s'est produite lors du transfert vers PayPal. Veuillez réessayer.");
+    showNatcashResult("❌ Erreur lors de la vérification. Veuillez réessayer.", 'error');
+    submitBtn.innerHTML = originalText;
     submitBtn.disabled = false;
-    submitBtn.textContent = "Confirmer le paiement";
   }
 }
 
-// Vérification du paiement NatCash (simulée)
-async function verifyNatcashPayment(phone, transactionId, amount) {
-  // Dans une implémentation réelle, vous utiliseriez l'API NatCash
-  // Pour l'instant, nous simulons une vérification réussie après 2 secondes
-  return new Promise(resolve => {
-    setTimeout(() => {
-      console.log(`Vérification NatCash: ${amount} € depuis ${phone}, transaction: ${transactionId || "N/A"}`);
-      // Simuler une vérification réussie dans 90% des cas
-      resolve(Math.random() < 0.9);
-    }, 2000);
-  });
-}
-
-// Transfert vers PayPal (simulé)
-async function transferToPaypal(amount, description) {
-  // Dans une implémentation réelle, vous utiliseriez l'API PayPal
-  // Pour l'instant, nous simulons un transfert réussi après 3 secondes
-  return new Promise(resolve => {
-    setTimeout(() => {
-      console.log(`Transfert PayPal: ${amount} € - ${description}`);
-      // Simuler un transfert réussi dans 95% des cas
-      resolve(Math.random() < 0.95);
-    }, 3000);
-  });
-}
-
-// Créer une commande dans Firestore
-async function createOrder(paymentDetails, shippingAddress, paymentMethod, natcashPhone = null, natcashTransaction = null) {
-  if (!currentUser) return;
-  
+// Vérifier le paiement NatCash
+async function verifyNatcashPayment(transferId, phoneNumber, orderData) {
   try {
-    const orderData = {
-      userId: currentUser.id,
-      customerName: currentUser.name,
-      customerEmail: currentUser.email,
-      customerPhone: currentUser.phone,
-      items: cart,
-      totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
-      paymentId: paymentDetails.id,
-      paymentMethod: paymentMethod,
-      paymentStatus: 'completed',
-      shippingAddress: shippingAddress,
-      status: 'processing',
-      createdAt: serverTimestamp(),
-      // Ajouter le statut de transfert PayPal
-      paypalTransferStatus: 'completed'
-    };
+    // 1. Vérifier si ce transfert existe déjà
+    const paymentsRef = collection(db, NATCASH_CONFIG.collectionName);
+    const q = query(paymentsRef, where("transferId", "==", transferId));
+    const querySnapshot = await getDocs(q);
     
-    // Ajouter les infos NatCash si pertinent
-    if (paymentMethod === 'natcash') {
-      orderData.natcashPhone = natcashPhone;
-      orderData.natcashTransaction = natcashTransaction;
+    if (!querySnapshot.empty) {
+      return { success: false, message: "❌ Ce transfert a déjà été utilisé." };
     }
     
-    // Ajouter la commande à Firestore
-    const orderRef = await addDoc(collection(db, "orders"), orderData);
+    // 2. Enregistrer le paiement
+    const paymentData = {
+      transferId: transferId,
+      phoneNumber: phoneNumber,
+      orderId: orderData.orderId,
+      customerName: orderData.customerName,
+      customerPhone: orderData.customerPhone,
+      amount: orderData.amount,
+      products: orderData.products,
+      status: "verified",
+      verifiedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
     
-    // Envoyer un email de confirmation
-    await sendOrderConfirmationEmail(orderData, orderRef.id);
+    await addDoc(paymentsRef, paymentData);
     
-    return orderRef.id;
+    // 3. Enregistrer la commande
+    const ordersRef = collection(db, NATCASH_CONFIG.ordersCollection);
+    const orderDoc = {
+      ...orderData,
+      paymentMethod: "NatCash",
+      paymentStatus: "paid",
+      paymentVerified: true,
+      natcashTransferId: transferId,
+      natcashPhone: phoneNumber,
+      orderDate: new Date().toISOString(),
+      status: "processing"
+    };
+    
+    await addDoc(ordersRef, orderDoc);
+    
+    // 4. Vider le panier Firestore si l'utilisateur est connecté
+    if (currentUser && currentUser.id) {
+      const cartsQuery = query(collection(db, NATCASH_CONFIG.cartsCollection), where("userId", "==", currentUser.id));
+      const querySnapshot = await getDocs(cartsQuery);
+      
+      if (!querySnapshot.empty) {
+        const cartDoc = querySnapshot.docs[0];
+        await updateDoc(doc(db, NATCASH_CONFIG.cartsCollection, cartDoc.id), {
+          items: [],
+          totalAmount: 0,
+          lastUpdated: new Date().toISOString()
+        });
+      }
+    }
+    
+    // 5. Envoyer une notification (simulée)
+    await sendOrderConfirmationEmail(orderData, orderData.orderId);
+    
+    return { 
+      success: true, 
+      message: "✅ Paiement vérifié ! Votre commande est confirmée." 
+    };
+    
   } catch (error) {
-    console.error("Erreur création commande:", error);
-    throw error;
+    console.error("Erreur NatCash:", error);
+    return { 
+      success: false, 
+      message: "❌ Erreur lors de la vérification du paiement." 
+    };
   }
+}
+
+// Générer un ID de commande unique
+function generateOrderId() {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000);
+  return `CMD-${timestamp}-${random}`;
+}
+
+// Afficher le résultat NatCash
+function showNatcashResult(message, type) {
+  const resultDiv = document.getElementById("natcashResult");
+  if (!resultDiv) return;
+  
+  resultDiv.innerHTML = `
+    <div style="padding: 1rem; border-radius: 0.5rem; background: ${type === 'success' ? '#dcfce7' : '#fee2e2'}; 
+                color: ${type === 'success' ? '#166534' : '#991b1b'}; border-left: 4px solid ${type === 'success' ? '#10b981' : '#ef4444'};">
+      <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+      ${message}
+    </div>
+  `;
+}
+
+// Afficher la confirmation de commande
+function showOrderConfirmation(orderData) {
+  const modal = document.getElementById("orderConfirmationModal");
+  if (!modal) return;
+  
+  document.getElementById("orderIdDisplay").textContent = orderData.orderId;
+  document.getElementById("orderAmountDisplay").textContent = orderData.amount.toFixed(2);
+  document.getElementById("orderDateDisplay").textContent = new Date().toLocaleString();
+  document.getElementById("orderConfirmationText").textContent = 
+    `Merci ${orderData.customerName} ! Votre commande de ${orderData.totalItems} article(s) a été confirmée.`;
+  
+  modal.style.display = 'flex';
+  
+  // Ajouter l'overlay
+  const overlay = document.getElementById("overlay");
+  if (overlay) overlay.classList.add("active");
+}
+
+// Fermer la confirmation de commande
+function closeOrderConfirmation() {
+  const modal = document.getElementById("orderConfirmationModal");
+  const overlay = document.getElementById("overlay");
+  
+  if (modal) modal.style.display = 'none';
+  if (overlay) overlay.classList.remove("active");
 }
 
 // Fonction simulée d'envoi d'email
 async function sendOrderConfirmationEmail(orderData, orderId) {
   // Dans une application réelle, vous utiliseriez un service d'email
   console.log("=== EMAIL DE CONFIRMATION ENVOYÉ ===");
-  console.log("À: ", orderData.customerEmail);
+  console.log("À: ", orderData.customerEmail || "Non spécifié");
   console.log("Sujet: Confirmation de votre commande MarcShop");
   console.log("Contenu:");
   console.log(`Bonjour ${orderData.customerName},`);
   console.log("Merci pour votre commande ! Voici le récapitulatif :");
   console.log("Numéro de commande: ", orderId);
   console.log("Articles:");
-  orderData.items.forEach(item => {
-    console.log(`- ${item.quantity}x ${item.name} (${item.size}, ${item.color}) - $${item.price.toFixed(2)}`);
+  orderData.products.forEach(item => {
+    console.log(`- ${item.quantity}x ${item.name} (${item.size || 'N/A'}, ${item.color || 'N/A'}) - $${item.price.toFixed(2)}`);
   });
-  console.log("Total: $", orderData.totalAmount.toFixed(2));
-  console.log("Adresse de livraison: ", orderData.shippingAddress);
-  console.log("Méthode de paiement: ", orderData.paymentMethod);
-  if (orderData.paymentMethod === 'natcash') {
-    console.log("Numéro NatCash: ", orderData.natcashPhone);
-    console.log("Transaction NatCash: ", orderData.natcashTransaction || "Non fournie");
-  }
+  console.log("Total: $", orderData.amount.toFixed(2));
+  console.log("Méthode de paiement: NatCash");
+  console.log("ID Transfert NatCash: ", orderData.natcashTransferId || "Non fourni");
+  console.log("Numéro NatCash: ", orderData.natcashPhone || "Non fourni");
   console.log("================================");
   
   return true;
@@ -837,22 +1023,40 @@ function filterByCategory(category) {
   document.querySelectorAll(".category-btn").forEach((btn) => {
     btn.classList.remove("active");
   });
-  document.querySelector(`[data-category="${category}"]`).classList.add("active");
+  const activeBtn = document.querySelector(`[data-category="${category}"]`);
+  if (activeBtn) {
+    activeBtn.classList.add("active");
+  }
   applyFilters();
 }
 
 function toggleCart() {
   const sidebar = document.getElementById("cartSidebar");
   const overlay = document.getElementById("overlay");
-  sidebar.classList.toggle("active");
-  overlay.classList.toggle("active");
+  if (sidebar) sidebar.classList.toggle("active");
+  if (overlay) overlay.classList.toggle("active");
 }
 
 function closeAllPanels() {
-  document.getElementById("cartSidebar").classList.remove("active");
-  document.getElementById("overlay").classList.remove("active");
+  const sidebar = document.getElementById("cartSidebar");
+  const overlay = document.getElementById("overlay");
+  if (sidebar) sidebar.classList.remove("active");
+  if (overlay) overlay.classList.remove("active");
   closeLightbox();
   closeNatcashModal();
+  
+  // Fermer également la confirmation de commande
+  const orderConfirmation = document.getElementById("orderConfirmationModal");
+  if (orderConfirmation) orderConfirmation.style.display = 'none';
+}
+
+function switchTab(tabName) {
+  document.querySelectorAll(".tab-btn").forEach((btn) => btn.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach((content) => content.classList.remove("active"));
+  const tabBtn = document.querySelector(`[data-tab="${tabName}"]`);
+  const tabContent = document.getElementById(`${tabName}Tab`);
+  if (tabBtn) tabBtn.classList.add("active");
+  if (tabContent) tabContent.classList.add("active");
 }
 
 function shareWebsite() {
@@ -867,9 +1071,6 @@ function shareWebsite() {
   }
 }
 
-// Exposer les fonctions globales
-window.addToCart = addToCart;
-window.updateQuantity = updateQuantity;
-window.removeFromCart = removeFromCart;
-window.openLightbox = openLightbox;
-window.toggleCart = toggleCart;
+// Rendre les fonctions globales accessibles
+window.closeOrderConfirmation = closeOrderConfirmation;
+window.openProductOptions = openProductOptions;
