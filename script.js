@@ -34,6 +34,9 @@ const NATCASH_CONFIG = {
   cartsCollection: "carts"
 };
 
+// Taux de change (optionnel, si vous voulez convertir)
+const EXCHANGE_RATE = 1; // 1 HTG = 1 HTG (pas de conversion)
+
 // Options par catégorie
 const SIZE_OPTIONS = {
   clothing: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
@@ -45,6 +48,34 @@ const SIZE_OPTIONS = {
 };
 
 const COLORS = ["Blanc", "Noir", "Rouge", "Bleu", "Vert", "Jaune", "Rose", "Violet", "Orange", "Gris", "Marron", "Beige"];
+
+// Fonction pour formater le prix en HTG
+function formatPrice(price) {
+  return `${price.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, " ")} HTG`;
+}
+
+// Fonction pour générer un numéro de commande unique
+function generateOrderNumber() {
+  const now = new Date();
+  const dateStr = now.getFullYear().toString().substr(-2) + 
+                  (now.getMonth() + 1).toString().padStart(2, '0') + 
+                  now.getDate().toString().padStart(2, '0');
+  const timeStr = now.getHours().toString().padStart(2, '0') + 
+                  now.getMinutes().toString().padStart(2, '0') + 
+                  now.getSeconds().toString().padStart(2, '0');
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  return `CMD-${dateStr}${timeStr}${random}`;
+}
+
+// Fonction pour générer un numéro de reçu
+function generateReceiptNumber() {
+  const now = new Date();
+  const dateStr = now.getFullYear().toString().substr(-2) + 
+                  (now.getMonth() + 1).toString().padStart(2, '0') + 
+                  now.getDate().toString().padStart(2, '0');
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  return `R${dateStr}${random}`;
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   loadFirestoreProducts();
@@ -540,8 +571,8 @@ function renderProducts() {
             <span>(${reviews})</span>
           </div>
           <div class="product-price">
-            <span class="current-price">$${product.price?.toFixed(2) || '0.00'}</span>
-            ${product.originalPrice > 0 ? `<span class="original-price">$${product.originalPrice?.toFixed(2) || '0.00'}</span>` : ''}
+            <span class="current-price">${formatPrice(product.price || 0)}</span>
+            ${product.originalPrice > 0 ? `<span class="original-price">${formatPrice(product.originalPrice || 0)}</span>` : ''}
           </div>
           <button class="add-to-cart" onclick="addToCart('${product.id}'); event.stopPropagation()">
             <i class="fas fa-shopping-cart"></i> Ajouter
@@ -592,6 +623,7 @@ function openProductOptions(product) {
       <h3>Ajouter au panier</h3>
       <img src="${product.images?.[0] || ''}" style="max-width:120px;max-height:120px;border-radius:6px; margin: 1rem auto; display: block;">
       <p style="text-align: center;"><strong>${product.name}</strong></p>
+      <p style="text-align: center; color: #10b981; font-weight: bold;">${formatPrice(product.price || 0)}</p>
       <form id="optionsForm" style="margin-top: 1rem;">
         <div style="margin-bottom: 1rem;">
           <label for="cartSize">Taille/Modèle :</label>
@@ -708,7 +740,7 @@ function updateCartUI() {
   const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   if (cartCount) cartCount.textContent = totalItems;
-  if (cartTotal) cartTotal.textContent = totalPrice.toFixed(2);
+  if (cartTotal) cartTotal.textContent = formatPrice(totalPrice);
 
   if (!cartItems) return;
 
@@ -729,7 +761,7 @@ function updateCartUI() {
         <div class="cart-item-info">
           <div class="cart-item-name">${item.name}</div>
           <div style="font-size:0.9em;color:#666;">${item.size ? `Taille/Modèle: <b>${item.size}</b>, ` : ''}Couleur: <b>${item.color}</b></div>
-          <div class="cart-item-price">$${item.price?.toFixed(2) || '0.00'}</div>
+          <div class="cart-item-price">${formatPrice(item.price || 0)}</div>
           <div class="quantity-controls">
             <button class="quantity-btn" onclick="updateQuantity('${item.key}', ${item.quantity - 1})">-</button>
             <span>${item.quantity}</span>
@@ -779,7 +811,7 @@ function openNatcashModal() {
   const natcashModal = document.getElementById("natcashModal");
   const overlay = document.getElementById("overlay");
   
-  if (natcashAmount) natcashAmount.textContent = totalPrice.toFixed(2) + " $";
+  if (natcashAmount) natcashAmount.textContent = formatPrice(totalPrice);
   if (natcashBusinessNumber) natcashBusinessNumber.textContent = NATCASH_CONFIG.merchantNumber;
   if (natcashModal) natcashModal.style.display = 'flex';
   if (overlay) overlay.classList.add("active");
@@ -835,13 +867,19 @@ async function processNatcashPayment(e) {
     phone: phoneNumber
   };
   
+  // Générer les numéros de commande et de reçu
+  const orderNumber = generateOrderNumber();
+  const receiptNumber = generateReceiptNumber();
+  
   // Préparer les données de commande
   const orderData = {
-    orderId: generateOrderId(),
+    orderNumber: orderNumber,
+    receiptNumber: receiptNumber,
     customerName: userInfo.name,
     customerEmail: userInfo.email,
     customerPhone: userInfo.phone || phoneNumber,
     amount: totalAmount,
+    currency: "HTG",
     products: cart.map(item => ({
       id: item.id,
       name: item.name,
@@ -908,10 +946,12 @@ async function verifyNatcashPayment(transferId, phoneNumber, orderData) {
     const paymentData = {
       transferId: transferId,
       phoneNumber: phoneNumber,
-      orderId: orderData.orderId,
+      orderNumber: orderData.orderNumber,
+      receiptNumber: orderData.receiptNumber,
       customerName: orderData.customerName,
       customerPhone: orderData.customerPhone,
       amount: orderData.amount,
+      currency: orderData.currency,
       products: orderData.products,
       status: "verified",
       verifiedAt: new Date().toISOString(),
@@ -920,7 +960,7 @@ async function verifyNatcashPayment(transferId, phoneNumber, orderData) {
     
     await addDoc(paymentsRef, paymentData);
     
-    // 3. Enregistrer la commande
+    // 3. Enregistrer la commande avec reçu
     const ordersRef = collection(db, NATCASH_CONFIG.ordersCollection);
     const orderDoc = {
       ...orderData,
@@ -930,7 +970,9 @@ async function verifyNatcashPayment(transferId, phoneNumber, orderData) {
       natcashTransferId: transferId,
       natcashPhone: phoneNumber,
       orderDate: new Date().toISOString(),
-      status: "processing"
+      status: "processing",
+      receiptGenerated: true,
+      receiptGeneratedAt: new Date().toISOString()
     };
     
     await addDoc(ordersRef, orderDoc);
@@ -964,13 +1006,6 @@ async function verifyNatcashPayment(transferId, phoneNumber, orderData) {
   }
 }
 
-// Générer un ID de commande unique
-function generateOrderId() {
-  const timestamp = Date.now();
-  const random = Math.floor(Math.random() * 1000);
-  return `CMD-${timestamp}-${random}`;
-}
-
 // Afficher le résultat NatCash
 function showNatcashResult(message, type) {
   const resultDiv = document.getElementById("natcashResult");
@@ -990,11 +1025,11 @@ function showOrderConfirmation(orderData) {
   const modal = document.getElementById("orderConfirmationModal");
   if (!modal) return;
   
-  document.getElementById("orderIdDisplay").textContent = orderData.orderId;
-  document.getElementById("orderAmountDisplay").textContent = orderData.amount.toFixed(2);
-  document.getElementById("orderDateDisplay").textContent = new Date().toLocaleString();
+  document.getElementById("orderIdDisplay").textContent = orderData.orderNumber;
+  document.getElementById("orderAmountDisplay").textContent = formatPrice(orderData.amount);
+  document.getElementById("orderDateDisplay").textContent = new Date().toLocaleString('fr-FR');
   document.getElementById("orderConfirmationText").textContent = 
-    `Merci ${orderData.customerName} ! Votre commande de ${orderData.totalItems} article(s) a été confirmée.`;
+    `Merci ${orderData.customerName} ! Votre commande de ${orderData.totalItems} article(s) a été confirmée. Votre reçu #${orderData.receiptNumber} a été généré.`;
   
   modal.style.display = 'flex';
   
