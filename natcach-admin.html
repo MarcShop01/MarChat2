@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarcShop - Administration NatCash</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0070ba, #005ea6);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: #0070ba;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-card h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #0070ba;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .payments-section, .verification-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section-title {
+            color: #0070ba;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .payments-list {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .payment-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        
+        .payment-card:hover {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .payment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .payment-id {
+            font-family: monospace;
+            background: #f0f8ff;
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: #0070ba;
+            font-weight: bold;
+        }
+        
+        .payment-amount {
+            font-size: 20px;
+            font-weight: bold;
+            color: #10b981;
+        }
+        
+        .payment-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .info-item label {
+            color: #666;
+            font-weight: 500;
+            display: block;
+            margin-bottom: 2px;
+        }
+        
+        .payment-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #0070ba;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-verified {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .status-failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .verification-form {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .alert {
+            padding: 12px 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .filter-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-select {
+            padding: 8px 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            background: white;
+            font-size: 14px;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 8px 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .realtime-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #0070ba;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        .back-btn {
+            color: #0070ba;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        .back-btn:hover {
+            text-decoration: underline;
+        }
+        
+        .no-payments {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .no-payments i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #d1d5db;
+        }
+        
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .export-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-left: 10px;
+        }
+        
+        .payment-details {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 13px;
+            border-left: 4px solid #0070ba;
+        }
+        
+        .payment-details h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+        }
+        
+        .detail-item {
+            overflow: hidden;
+        }
+        
+        .detail-item label {
+            color: #666;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .detail-item div {
+            font-weight: 500;
+            word-break: break-all;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .payment-info {
+                grid-template-columns: 1fr;
+            }
+            
+            .payment-actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            
+            .header-actions {
+                display: flex;
+                gap: 10px;
+                width: 100%;
+            }
+            
+            .logout-btn, .export-btn {
+                flex: 1;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- En-tête -->
+        <div class="header">
+            <div>
+                <a href="admin.html" class="back-btn">
+                    <i class="fas fa-arrow-left"></i> Retour à l'admin
+                </a>
+                <h1>
+                    <i class="fas fa-money-bill-wave"></i>
+                    Tableau de bord NatCash
+                    <span class="realtime-badge">
+                        <i class="fas fa-circle"></i> TEMPS RÉEL
+                    </span>
+                </h1>
+            </div>
+            <div class="header-actions">
+                <button onclick="exportToExcel()" class="export-btn">
+                    <i class="fas fa-file-export"></i> Exporter Excel
+                </button>
+                <button onclick="logout()" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Déconnexion
+                </button>
+            </div>
+        </div>
+        
+        <!-- Statistiques -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total des paiements</h3>
+                <div class="value" id="totalPayments">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Montant total</h3>
+                <div class="value" id="totalAmount">0 $</div>
+            </div>
+            <div class="stat-card">
+                <h3>Paiements vérifiés</h3>
+                <div class="value" id="verifiedPayments">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>En attente</h3>
+                <div class="value" id="pendingPayments">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Aujourd'hui</h3>
+                <div class="value" id="todayPayments">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Moyenne par paiement</h3>
+                <div class="value" id="averagePayment">0 $</div>
+            </div>
+        </div>
+        
+        <!-- Contenu principal -->
+        <div class="main-content">
+            <!-- Section des paiements -->
+            <div class="payments-section">
+                <div class="section-title">
+                    <i class="fas fa-list"></i>
+                    Historique des paiements NatCash
+                </div>
+                
+                <!-- Filtres -->
+                <div class="filter-controls">
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Rechercher par ID, téléphone ou nom...">
+                    </div>
+                    <select class="filter-select" id="statusFilter">
+                        <option value="all">Tous les statuts</option>
+                        <option value="verified">Vérifiés</option>
+                        <option value="pending">En attente</option>
+                        <option value="failed">Échoués</option>
+                    </select>
+                    <select class="filter-select" id="dateFilter">
+                        <option value="all">Toutes les dates</option>
+                        <option value="today">Aujourd'hui</option>
+                        <option value="week">Cette semaine</option>
+                        <option value="month">Ce mois</option>
+                    </select>
+                </div>
+                
+                <!-- Liste des paiements -->
+                <div class="payments-list" id="paymentsList">
+                    <div class="no-payments">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <h3>Aucun paiement NatCash</h3>
+                        <p>Les paiements NatCash apparaîtront ici lorsqu'ils seront effectués par les clients.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Section de vérification -->
+            <div class="verification-section">
+                <div class="section-title">
+                    <i class="fas fa-check-circle"></i>
+                    Vérification manuelle
+                </div>
+                
+                <!-- Alertes -->
+                <div id="alertMessage" class="alert"></div>
+                
+                <!-- Formulaire de vérification -->
+                <div class="verification-form">
+                    <div class="form-group">
+                        <label for="verifyTransferId">ID de transfert NatCash</label>
+                        <input type="text" id="verifyTransferId" placeholder="Ex: NAT123456789">
+                    </div>
+                    <div class="form-group">
+                        <label for="verifyStatus">Nouveau statut</label>
+                        <select id="verifyStatus">
+                            <option value="verified">Vérifié ✓</option>
+                            <option value="pending">En attente</option>
+                            <option value="failed">Échoué</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="verifyNotes">Notes (optionnel)</label>
+                        <input type="text" id="verifyNotes" placeholder="Raison du changement de statut...">
+                    </div>
+                    <button onclick="verifyPayment()" class="btn btn-primary" style="width: 100%;">
+                        <i class="fas fa-check"></i> Mettre à jour le statut
+                    </button>
+                </div>
+                
+                <!-- Instructions -->
+                <div style="margin-top: 20px; padding: 15px; background: #f0f7ff; border-radius: 8px; border-left: 4px solid #0070ba;">
+                    <h4 style="color: #0070ba; margin-bottom: 10px;">
+                        <i class="fas fa-info-circle"></i> Instructions
+                    </h4>
+                    <ul style="color: #333; font-size: 14px; line-height: 1.5; padding-left: 20px;">
+                        <li>Pour vérifier un paiement, entrez l'ID de transfert et cliquez sur "Mettre à jour"</li>
+                        <li>Le statut "Vérifié" confirme que le paiement est validé</li>
+                        <li>Le statut "Échoué" indique un problème avec le transfert</li>
+                        <li>Les paiements en attente nécessitent une vérification manuelle</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <script>
+        // Configuration Firebase
+        const firebaseConfig = {
+          apiKey: "AIzaSyC_krW6QcyTSJZNJf-_7YAc_491mCWYaQ",
+          authDomain: "marchat-e4d21.firebaseapp.com",
+          projectId: "marchat-e4d21",
+          storageBucket: "marchat-e4d21.appspot.com",
+          messagingSenderId: "211043298263",
+          appId: "1:211043298263:web:dcf751d299aa4360d83992",
+          measurementId: "G-CZHXLDZTBW"
+        };
+        
+        // Initialiser Firebase
+        let firebaseInitialized = false;
+        let db = null;
+        let auth = null;
+        
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            auth = firebase.auth();
+            firebaseInitialized = true;
+        } catch (error) {
+            console.error("Erreur d'initialisation Firebase:", error);
+            showAlert("Erreur de connexion à Firebase. Vérifiez votre connexion Internet.", "error");
+        }
+        
+        // Données
+        let payments = [];
+        let filteredPayments = [];
+        
+        // Écouteur en temps réel
+        let paymentsUnsubscribe = null;
+        
+        document.addEventListener("DOMContentLoaded", () => {
+            checkOwnerSession();
+            setupEventListeners();
+        });
+        
+        function checkOwnerSession() {
+            const ownerSession = localStorage.getItem("marcshop-owner-session");
+            if (!ownerSession) {
+                window.location.href = "admin.html";
+                return;
+            }
+            
+            const sessionData = JSON.parse(ownerSession);
+            const now = new Date().getTime();
+            
+            if (now - sessionData.timestamp > 24 * 60 * 60 * 1000) {
+                localStorage.removeItem("marcshop-owner-session");
+                window.location.href = "admin.html";
+                return;
+            }
+            
+            if (firebaseInitialized) {
+                auth.onAuthStateChanged((user) => {
+                    if (user && user.email === 'emmanuelmarc130493@gmail.com') {
+                        setupRealtimeListeners();
+                    } else {
+                        window.location.href = "admin.html";
+                    }
+                });
+            } else {
+                showAlert("Mode hors ligne activé. Les données ne seront pas mises à jour en temps réel.", "error");
+            }
+        }
+        
+        function setupRealtimeListeners() {
+            if (!firebaseInitialized) return;
+            
+            paymentsUnsubscribe = db.collection("natcash_payments")
+                .orderBy("createdAt", "desc")
+                .onSnapshot((snapshot) => {
+                    payments = snapshot.docs.map(doc => ({ 
+                        id: doc.id, 
+                        ...doc.data() 
+                    }));
+                    applyFilters();
+                    updateStats();
+                }, (error) => {
+                    console.error("Erreur lors de l'écoute des paiements:", error);
+                    showAlert("Erreur de connexion aux paiements. Réessayez.", "error");
+                });
+        }
+        
+        function setupEventListeners() {
+            document.getElementById("searchInput").addEventListener("input", applyFilters);
+            document.getElementById("statusFilter").addEventListener("change", applyFilters);
+            document.getElementById("dateFilter").addEventListener("change", applyFilters);
+        }
+        
+        function applyFilters() {
+            const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+            const statusFilter = document.getElementById("statusFilter").value;
+            const dateFilter = document.getElementById("dateFilter").value;
+            
+            filteredPayments = payments.filter(payment => {
+                // Filtre de recherche
+                const matchesSearch = !searchTerm || 
+                    (payment.transferId && payment.transferId.toLowerCase().includes(searchTerm)) ||
+                    (payment.phoneNumber && payment.phoneNumber.includes(searchTerm)) ||
+                    (payment.customerName && payment.customerName.toLowerCase().includes(searchTerm));
+                
+                // Filtre de statut
+                const matchesStatus = statusFilter === 'all' || payment.status === statusFilter;
+                
+                // Filtre de date
+                let matchesDate = true;
+                if (dateFilter !== 'all' && payment.createdAt) {
+                    const paymentDate = new Date(payment.createdAt);
+                    const today = new Date();
+                    
+                    switch(dateFilter) {
+                        case 'today':
+                            matchesDate = paymentDate.toDateString() === today.toDateString();
+                            break;
+                        case 'week':
+                            const oneWeekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                            matchesDate = paymentDate >= oneWeekAgo;
+                            break;
+                        case 'month':
+                            const oneMonthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+                            matchesDate = paymentDate >= oneMonthAgo;
+                            break;
+                    }
+                }
+                
+                return matchesSearch && matchesStatus && matchesDate;
+            });
+            
+            renderPaymentsList();
+        }
+        
+        function renderPaymentsList() {
+            const paymentsList = document.getElementById("paymentsList");
+            
+            if (filteredPayments.length === 0) {
+                paymentsList.innerHTML = `
+                    <div class="no-payments">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <h3>Aucun paiement trouvé</h3>
+                        <p>Aucun paiement ne correspond à vos critères de recherche.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            paymentsList.innerHTML = filteredPayments.map(payment => {
+                const amount = payment.amount || 0;
+                const status = payment.status || 'pending';
+                const createdAt = payment.createdAt ? new Date(payment.createdAt) : new Date();
+                const formattedDate = createdAt.toLocaleDateString('fr-FR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                let statusBadgeClass = 'status-pending';
+                let statusText = 'En attente';
+                
+                if (status === 'verified') {
+                    statusBadgeClass = 'status-verified';
+                    statusText = 'Vérifié';
+                } else if (status === 'failed') {
+                    statusBadgeClass = 'status-failed';
+                    statusText = 'Échoué';
+                }
+                
+                return `
+                    <div class="payment-card">
+                        <div class="payment-header">
+                            <div class="payment-id">${payment.transferId || 'N/A'}</div>
+                            <div class="payment-amount">${amount.toFixed(2)} $</div>
+                        </div>
+                        
+                        <div class="payment-info">
+                            <div class="info-item">
+                                <label>Client</label>
+                                <div>${payment.customerName || 'Non spécifié'}</div>
+                            </div>
+                            <div class="info-item">
+                                <label>Téléphone</label>
+                                <div>${payment.phoneNumber || payment.customerPhone || 'N/A'}</div>
+                            </div>
+                            <div class="info-item">
+                                <label>Date</label>
+                                <div>${formattedDate}</div>
+                            </div>
+                            <div class="info-item">
+                                <label>Statut</label>
+                                <div class="status-badge ${statusBadgeClass}">${statusText}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="payment-details" id="details-${payment.id}" style="display: none;">
+                            <h4>Détails supplémentaires</h4>
+                            <div class="details-grid">
+                                <div class="detail-item">
+                                    <label>ID Commande</label>
+                                    <div>${payment.orderId || 'N/A'}</div>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Vérifié le</label>
+                                    <div>${payment.verifiedAt ? new Date(payment.verifiedAt).toLocaleDateString('fr-FR') : 'Non vérifié'}</div>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Email</label>
+                                    <div>${payment.customerEmail || 'N/A'}</div>
+                                </div>
+                                <div class="detail-item">
+                                    <label>Produits</label>
+                                    <div>${payment.products ? payment.products.length : 0} article(s)</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="payment-actions">
+                            <button onclick="toggleDetails('${payment.id}')" class="btn btn-secondary">
+                                <i class="fas fa-eye"></i> Détails
+                            </button>
+                            <button onclick="verifyPaymentModal('${payment.id}')" class="btn btn-primary">
+                                <i class="fas fa-edit"></i> Modifier
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function toggleDetails(paymentId) {
+            const detailsDiv = document.getElementById(`details-${paymentId}`);
+            if (detailsDiv.style.display === 'none') {
+                detailsDiv.style.display = 'block';
+            } else {
+                detailsDiv.style.display = 'none';
+            }
+        }
+        
+        function verifyPaymentModal(paymentId) {
+            const payment = payments.find(p => p.id === paymentId);
+            if (!payment) return;
+            
+            document.getElementById("verifyTransferId").value = payment.transferId || '';
+            document.getElementById("verifyStatus").value = payment.status || 'pending';
+            document.getElementById("verifyNotes").value = '';
+            
+            showAlert(`Prêt à modifier le paiement ${payment.transferId}. Sélectionnez le nouveau statut.`, "success");
+            
+            // Faire défiler jusqu'au formulaire de vérification
+            document.querySelector('.verification-section').scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+        
+        async function verifyPayment() {
+            const transferId = document.getElementById("verifyTransferId").value.trim();
+            const newStatus = document.getElementById("verifyStatus").value;
+            const notes = document.getElementById("verifyNotes").value.trim();
+            
+            if (!transferId) {
+                showAlert("Veuillez entrer un ID de transfert", "error");
+                return;
+            }
+            
+            // Trouver le paiement par transferId
+            const payment = payments.find(p => p.transferId === transferId);
+            if (!payment) {
+                showAlert("Aucun paiement trouvé avec cet ID de transfert", "error");
+                return;
+            }
+            
+            try {
+                await db.collection("natcash_payments").doc(payment.id).update({
+                    status: newStatus,
+                    verifiedAt: new Date().toISOString(),
+                    notes: notes || null,
+                    lastUpdated: new Date().toISOString()
+                });
+                
+                showAlert(`Statut du paiement ${transferId} mis à jour avec succès!`, "success");
+                
+                // Réinitialiser le formulaire
+                document.getElementById("verifyTransferId").value = '';
+                document.getElementById("verifyNotes").value = '';
+                
+            } catch (error) {
+                console.error("Erreur lors de la mise à jour:", error);
+                showAlert("Erreur lors de la mise à jour: " + error.message, "error");
+            }
+        }
+        
+        function updateStats() {
+            const totalPayments = payments.length;
+            const totalAmount = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            const verifiedPayments = payments.filter(p => p.status === 'verified').length;
+            const pendingPayments = payments.filter(p => p.status === 'pending').length;
+            
+            // Paiements d'aujourd'hui
+            const today = new Date().toDateString();
+            const todayPayments = payments.filter(p => {
+                if (!p.createdAt) return false;
+                const paymentDate = new Date(p.createdAt).toDateString();
+                return paymentDate === today;
+            }).length;
+            
+            // Calcul de la moyenne
+            const averagePayment = totalPayments > 0 ? totalAmount / totalPayments : 0;
+            
+            // Mise à jour de l'interface
+            document.getElementById("totalPayments").textContent = totalPayments;
+            document.getElementById("totalAmount").textContent = totalAmount.toFixed(2) + " $";
+            document.getElementById("verifiedPayments").textContent = verifiedPayments;
+            document.getElementById("pendingPayments").textContent = pendingPayments;
+            document.getElementById("todayPayments").textContent = todayPayments;
+            document.getElementById("averagePayment").textContent = averagePayment.toFixed(2) + " $";
+        }
+        
+        function showAlert(message, type) {
+            const alertDiv = document.getElementById("alertMessage");
+            alertDiv.textContent = message;
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.style.display = "block";
+            
+            setTimeout(() => {
+                alertDiv.style.display = "none";
+            }, 5000);
+        }
+        
+        function exportToExcel() {
+            if (payments.length === 0) {
+                showAlert("Aucune donnée à exporter", "error");
+                return;
+            }
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            // En-têtes
+            const headers = ["ID Transfert", "Client", "Téléphone", "Montant", "Statut", "Date", "ID Commande", "Email"];
+            csvContent += headers.join(",") + "\n";
+            
+            // Données
+            payments.forEach(payment => {
+                const row = [
+                    payment.transferId || "",
+                    payment.customerName || "",
+                    payment.phoneNumber || payment.customerPhone || "",
+                    payment.amount || 0,
+                    payment.status || "",
+                    payment.createdAt ? new Date(payment.createdAt).toLocaleDateString('fr-FR') : "",
+                    payment.orderId || "",
+                    payment.customerEmail || ""
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+            
+            // Créer et télécharger le fichier
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `natcash_payments_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showAlert("Exportation réussie! Le fichier CSV a été téléchargé.", "success");
+        }
+        
+        function logout() {
+            if (paymentsUnsubscribe) {
+                paymentsUnsubscribe();
+            }
+            
+            localStorage.removeItem("marcshop-owner-session");
+            window.location.href = "admin.html";
+        }
+        
+        // Exposer les fonctions globales
+        window.toggleDetails = toggleDetails;
+        window.verifyPaymentModal = verifyPaymentModal;
+        window.verifyPayment = verifyPayment;
+        window.exportToExcel = exportToExcel;
+        window.logout = logout;
+    </script>
+</body>
+</html>
